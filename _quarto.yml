@@ -1,0 +1,123 @@
+project:
+  type: website
+  render:
+    - "*.qmd"
+    - "weeks/"
+    - "labs/"
+    - "!slides/"
+    - "!solutions/"
+    - "!exams/"
+  output-dir: _site
+
+website:
+  page-navigation: true
+  title: "MA7BY020 - Spring 2025"
+  description: "Homepage for course MA7BY020 - Exploratory Data Analysis, Master MIDS Spring   2025."
+  site-url: "https://s-v-b.github.io/MA7BY020/"
+
+  repo-url: https://github.com/s-v-b/MA7BY020
+  repo-actions: [edit, issue]
+
+  open-graph: true
+
+  page-footer:
+    right: "This page is built with blood, sweat, tears, and [Quarto](https://quarto.org/)."
+    left: "&copy; Copyright 2024, Stéphane Boucheron"
+    background: "#D9E3E4"
+
+  sidebar:
+    background: "#D9E3E4"
+    logo: "images/logo.png"
+    pinned: true
+    align: center
+    tools:
+      - icon: github
+        href: https://github.com/s-v-b/MA7BY020
+        text: "GitHub organization"
+      - icon: person-fill
+        text: "Moodle"
+        menu:
+          - text: Discussion forum
+            url: https://moodle.u-paris.fr/course/view.php?id=2313
+          - text: Dépot 
+            url: https://moodle.u-paris.fr/course/view.php?id=2313
+          - text: Notes
+            url: https://moodle.u-paris.fr/course/view.php?id=2313
+
+    style: "docked"
+    search: true
+    collapse-level: 1
+    contents:
+      - section: "Informations générales"
+        contents:
+          - href: index.qmd
+            text: Aperçu
+          - href: cours-syllabus.qmd
+            text: Syllabus
+          - href: cours-team.qmd
+            text: Team
+      - section: "Support"
+        contents:
+          - href: computing-access.qmd
+            text: "Computing resources"
+          - href: computing-dbeaver.qmd
+            text: "dbeaver"
+          - href: rstudio-client.qmd
+            text: "rstudio"
+          - href: posit-cloud.qmd
+            text: "Posit cloud"
+          - href: quarto-format.qmd
+            text: "Quarto"
+      - href: slides-listings.qmd
+        text: Slides
+      - href: labs-listings.qmd
+        text: Labs
+      - href: Solutions-listings.qmd
+        text: Corrections  
+      - href: exams-listings.qmd
+        text: Exams
+      - section: "Journal"
+        contents:
+          - href: weeks/week-1.qmd
+            text: "Semaine 1"
+          - href: weeks/week-2.qmd
+            text: "Semaine 2"
+          - href: weeks/week-3.qmd
+            text: "Semaine 3"
+          - href: weeks/week-4.qmd
+            text: "Semaine 4"
+          - href: weeks/week-5.qmd
+            text: "Semaine 5"
+          - href: weeks/week-6.qmd
+            text: "Semaine 6"
+          - href: weeks/week-7.qmd
+            text: "Semaine 7"
+          - href: weeks/week-8.qmd
+            text: "Semaine 8"
+          - href: weeks/week-9.qmd
+            text: "Semaine 9"
+          - href: weeks/week-10.qmd
+            text: "Semaine 10"
+          - href: weeks/week-11.qmd
+            text: "Semaine 11"
+          - href: weeks/week-12.qmd
+            text: "Semaine 12"
+          - href: weeks/week-13.qmd
+            text: "Semaine 13"
+
+format:
+  html:
+    theme:
+      light: [cosmo, theme.scss]
+      dark: [cosmo, theme-dark.scss]
+    mainfont: "Atkinson Hyperlegible"
+    code-copy: true
+    code-overflow: wrap
+    toc: true
+    link-external-newwindow: true
+
+execute:
+  freeze: auto
+  cache: true
+
+editor: source
