@@ -1,0 +1,254 @@
+---
+format:
+  html:
+    output-file: est-eda-2024-05-29.html
+  pdf:
+    output-file: est-eda-2024-05-29.pdf
+
+execute: 
+  eval: true
+  echo: false
+  collapse: true
+  
+  
+params:
+  truc: html
+  year: 2023 
+  curriculum: "M1 MIDS & MFA"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/isidata"
+  moodle: ""
+
+engine: knitr
+---
+
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+**Analyse Exploratoire: EST 2024-05-29  (2 heures)**
+
+- **`r glue::glue('{params$curriculum}')`** 
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- 2024-04-24  
+
+:::
+
+::: {#second-column}
+
+
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){style="float:right; size: 50px;"
+width="132"}
+
+
+:::
+
+:::
+
+
+
+::: {.callout-caution}
+
+###  Factorisation QR (rappel)
+
+Soit $\mathbb{X} \in \mathcal{M}_{n,p}$. Si $\text{rang}(\mathbb{X}) =p$ alors il existe $\mathbb{Q} \in \mathcal{M}_{n,p}$ et $\mathbb{R} \in \mathcal{M}_{p,p}$ tels que $\mathbb{X} = \mathbb{Q} \times \mathbb{R}$ avec 
+$\mathbb{Q}^\top \times \mathbb{Q}= \text{Id}_p$ et $\mathbb{R}$ triangulaire supérieure. 
+
+Le couple $\mathbb{Q}, \mathbb{R}$ est appelé factorisaton QR de $\mathbb{X}$. 
+
+:::
+
+::: {.callout-note}
+
+### Questions (factorisation QR)
+
+On se donne le _design_:
+$$\mathbb{X} = \left[\begin{array}{rr}
+  - 1 & 1 + \epsilon \\
+  1 & 1 - \epsilon \\
+  - 1 & 1 + \epsilon \\
+   1 & 1 - \epsilon
+\end{array}\right]$$
+avec $\epsilon \in \mathbb{R}$.
+
+1. Quelle est la factorisation `QR`  de $\mathbb{X}$ ?
+2. Quelle est la _Hat_ matrice associée au design $\mathbb{X}$ (matrice de projection orthogonale sur le SEV engendré par les colonnes de $\mathbb{X}$) ?
+3. Si le vecteur réponse est $Y \in \mathbb{R}^4$, quel  est l'estimateur des moindres carrés ordinaires? (le minimisant de $\| Y - \mathbb{X}\theta\|_2^2$)
+
+:::
+
+
+::: {.content-visible when-profile='solution'} 
+
+
+1. Factorisation
+
+$$
+Q \times R = 
+\left[\begin{array}{rr}
+  - 1/2 & 1/2  \\
+  1/2 & 1/2  \\
+  - 1/2 & 1/2  \\
+   1/2 & 1/2 
+\end{array}\right] \times \left[\begin{array}{rr}
+  2 & -2\epsilon \\
+  0 & 2 \epsilon 
+\end{array}\right]
+$$ 
+
+2.  
+
+$$
+\mathbb{H} = \left[\begin{array}{rr}
+  - 1/2 & 1/2  \\
+  1/2 & 1/2  \\
+  - 1/2 & 1/2  \\
+   1/2 & 1/2 b
+\end{array}\right] \times \left[\begin{array}{rrrr}
+ -1/2 & 1/2 & -1/2 & 1/2 \\
+  1/2 & 1/2 & 1/2 & 1/2 
+\end{array}\right]   = \left[\begin{array}{rrrr}
+  1/2 & 0 & 1/2 & 0 \\
+  0 & 1/2  & 0 & 1/2 \\
+   1/2 & 0 & 1/2 & 0\\
+   0 & 1/2 & 0  & 1/2
+\end{array}\right] 
+$$ 
+
+
+3.
+
+$$
+R^{-1} \times Q^\top \times  = \frac{1}{2} \begin{bmatrix} 1 & \epsilon\\ 0 & 1 \end{bmatrix} \times  \left[\begin{array}{rrrr}
+ -1/2 & 1/2 & -1/2 & 1/2 \\
+  1/2 & 1/2 & 1/2 & 1/2 
+\end{array}\right] \times Y
+$$
+
+
+:::
+
+
+::: {.callout-caution}
+
+
+###  Matrices symétriques et décomposition spectrale (rappel)
+
+$\mathbb{M}$ désigne une matrice *symétrique* à $n$ lignes. 
+
+$\mathbb{M}$ admet une *décomposition spectrale*: 
+
+$$\mathbb{M} = U \times \Lambda \times U^{\top}$$
+avec $U \times U^\top = \text{Id}$ et $\Lambda$ diagonale. Les vecteurs colonnes de $U$ sont appelés *vecteurs propres* de $\mathbb{M}$ et les coefficients diagonaux de $\Lambda$ *valeurs propres* de $\mathbb{M}$.
+ 
+:::
+
+::: {.callout-note}
+
+### Question Matrices symétriques et décomposition spectrale
+
+1. Si $\mathbb{M}$ est une matrice symétrique définie positive, trouver une matrice de projection orthogonale $\mathbb{A}$ de rang $2$ qui maximise $\text{Trace}(\mathbb{A} \times \mathbb{M} \times \mathbb{A}^\top)$
+:::
+  
+
+::: {.content-visible when-profile='solution'} 
+
+Une matrice $\mathbb{A}$ est matrice de projection orthogonale de rang $2$ ssi 
+
+1. $\mathbb{A}=\mathbb{A}^\top$ (symétrie)
+2. $\mathbb{A}^2 = \mathbb{A}$ (idempotence)
+3. $\textsf{trace}(\mathbb{A}) =2$ (rang=dimension du SEV sur lequel $\mathbb{A}$ projette)
+
+Une matrice DP $\mathbb{M}$ admet une décomposition spectrale $\mathbb{M} =  O \times \Lambda \times O^\top$ où $O$ est une matrice orthogonale $O\times O^T=O^T \times O = \text{Id}$ et $\Lambda$ est une matrice diagonale dont les coefficients diagonaux (valeurs propres) sont décroissants. Les vecteurs colonnes de $O$ sont les vecteurs propres de $\mathbb{M}$
+
+\begin{align*}
+\textsf{trace}(\mathbb{A} \times \mathbb{M} \times \mathbb{A}^\top) 
+& = \textsf{trace}(\mathbb{A} \times O \times \Lambda  \times O^\top \times \mathbb{A}^\top) \\
+& = \textsf{trace}(O^\top \times \mathbb{A} \times O \times \Lambda  \times O^\top \times \mathbb{A}^\top \times O)
+\end{align*}
+
+car la trace est invariante  par similitude. 
+ 
+Mais si $O$ est orthogonale et $\mathbb{A}$ une matrice de projection orthogonale $O^\top \times \mathbb{A} \times O$ est aussi une matrice de projection orthogonale, de même rang que $\mathbb{A}$. 
+
+On s'est donc rammené à étudier le problème lorsque la matrice $\mathbb{B}$ est une matrice diagonale à coefficients positifs.  
+
+
+
+En projetant sur le SEV engendré par les $r$ premiers vecteurs propres de
+$\mathbb{M}$ on maximise la trace recherchée, le maximum est égal à la  somme des premières valeurs propres de $\mathbb{M}$.
+
+:::
+
+$
+
+
+::: {.callout-caution}
+
+### Factorisation SVD (rappel)
+
+Une décomposition SVD de $\mathbb{X} \in \mathcal{M}_{n,p}$ est une factorisation de la forme
+
+$$\mathbb{X} = U \times D \times V^\top$$
+
+avec $U^\top \times U=\text{Id}_n$, $V^\top \times V=\text{Id}_p$, $D$ vérifiant
+$D_{i,j}=0$ si $i\neq j$, $D_{i,i}=0$ pour $i > \text{rang}(\mathbb{X})$, $D_{i,i}\geq D_{i+1, i+1}$.
+
+Les coefficients diagonaux de $D$ sont appelés *valeurs singulières* de $\mathbb{X}$.
+Les vecteurs colonnes de $U$ (respectivement $V$) sont appelés *vecteurs singuliers* à gauche (respectivement à droite).  
+
+On notera les valeurs singulières non nulles de $s_1 \geq s_2 \geq \ldots \geq s_{r}$ ($r=\text{rang}(\mathbb{X})$).
+
+:::
+
+::: {.callout-note}
+
+### Questions Factorisation SVD
+
+1. Donner une factorisation SVD de $\begin{pmatrix} 0 & 1 & 0 \\ 0 & 0 & 1 \\ 0 & 0 & 0 \end{pmatrix}$
+
+Dans la suite $\mathbb{X} \in \mathcal{M}_{n,p}$
+
+2. Explicitez la SVD de $\lambda \text{Id}_p + \mathbb{X}^\top\mathbb{X}$ en fonction de la SVD *fine* de $\mathbb{X} = {U} \times {D} \times {V}^\top$ 
+3. $(\lambda \text{Id}_p + \mathbb{X}^\top\mathbb{X})^{-1}$ est-elle toujours bien définie?
+4. Explicitez la SVD de $(\lambda \text{Id}_p + \mathbb{X}^\top\mathbb{X})^{-1}$ lorsque cette matrice est bien définie.
+5. Explicitez $\lim_{\lambda \searrow 0} (\lambda \text{Id}_p + \mathbb{X}^\top\mathbb{X})^{-1}$ lorsque la limite est bien définie.
+
+
+
+
+:::
+
+
+::: {.content-visible when-profile='solution'} 
+
+1.
+$$U \times D \times V^\top = \begin{bmatrix} 1 & 0 \\ 0 & 1 \\ 0 & 0\end{bmatrix} \times \begin{bmatrix} 1 & 0 \\ 0 & 1\end{bmatrix} \times \begin{bmatrix} 0 & 0 \\ 1 & 0 \\ 0 & 1\end{bmatrix}^{\top} $$ 
+
+2. 
+$$ \lambda \text{Id}_p + \mathbb{X}^\top \mathbb{X} = \lambda \text{Id}_p + V \times D^2 \times V^\top$$
+On complète la famille des $r$ vecteurs colonnes de $V$ pour former une base orthonormée de $\mathbb{R}^p$. 
+$$V = \begin{bmatrix} v_1 & v_2 & \ldots & v_r \end{bmatrix} \qquad \text{Id}_p = \sum_{i=1}^r v_i \times v_i^\top + \sum_{i=r+1}^p v_i \times v_i^\top$$ d'où
+$$\lambda \text{Id}_p + \mathbb{X}^\top \mathbb{X} =  \sum_{i=1}^r (\lambda + s_i^2) v_i \times v_i^\top + \lambda \sum_{i=r+1}^p v_i \times v_i^\top$$
+
+$$\lambda \text{Id}_p + \mathbb{X}^\top \mathbb{X} = \begin{bmatrix} v_1 & v_2 & \ldots & v_p \end{bmatrix} \times 
+\begin{bmatrix} \lambda + s_1^2 & 0 &  & 0 \\ 0 & \lambda + s_2^2 & & \\ \\ 0 & & & \lambda 
+\end{bmatrix} \times \begin{bmatrix} v_1 & v_2 & \ldots & v_p \end{bmatrix}^\top$$
+
+1. Pour $\lambda > 0$, la matrice est définie positive donc inversible.  
+
+2. Les vecteurs propres ne changent pas, les valeurs propres sont les inverses des valeurs propres $1/(\lambda +s_i^2)$
+
+3. Pour parler de limite, il faut s'entendre sur une topologie. On peut se contenter de choisir une métrique. Par exemple, la métrique de Hilbert-Schmidt ou la norme d'opérateur (elles sont équivalentes). 
+ 
+La limite est bien définie si $\mathbb{X}$ est de rang $p$. Dans ce cas, la limite est $(\mathbb{X}^\top\mathbb{X})^{-1}$ 
+
+La limite de $\lim_{\lambda \searrow 0} (\lambda \text{Id}_p + \mathbb{X}^\top\mathbb{X})^{-1} \times \mathbb{X}^\top$ est toujours définie. C'est la *pseudo-inverse* de $\mathbb{X}$.
+
+$(\lambda \text{Id}_p + \mathbb{X}^\top\mathbb{X})^{-1} \times \mathbb{X}^\top Y$ est le minimisant de 
+$$\left\| Y - \mathbb{X}\theta\right\|^2 + \lambda \| \theta\|^2$$
+(la solution du problème de régression Ridge).
+
+:::

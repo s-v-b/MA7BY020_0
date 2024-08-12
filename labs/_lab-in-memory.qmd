@@ -1,0 +1,30 @@
+---
+title: "In memory databases"
+format: html
+---
+
+
+# Loading `life_table` onto an in memory database
+
+We load `life_table` into an in memory database,  unleashing the full power of SQL.
+This is helpful if we have to use window functions.
+
+```{r memdb_frame, echo=FALSE, eval=TRUE}
+lt <- dbplyr::memdb_frame(select(life_table,
+                                 Year, Age, qx, Country, Gender))
+```
+
+```{r usebackend}
+con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+src <- dbplyr::src_dbi(con, auto_disconnect = TRUE)
+
+dplyr::copy_to(src, lt)
+```
+
+Object `lt` can be queried like any other data frame.
+
+```{r}
+lt |>
+  filter(Gender == 'Female', Country== 'USA', 'Year'==1948) |>
+  show_query()
+```

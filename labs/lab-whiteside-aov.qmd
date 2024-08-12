@@ -1,0 +1,724 @@
+---
+date: "`r Sys.time()`"
+
+execute:
+  echo: true
+  eval: true
+  collapse: true
+
+
+format:
+  html:
+    output-file: lab-whiteside-anova.html
+  pdf:
+    output-file: lab-whiteside-anova.pdf
+
+params:
+  truc: html
+  year: 2024 
+  curriculum: "M1 MIDS & MFA"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/eda"
+  moodle: ""
+  
+engine: knitr
+standalone: true
+---
+
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+require(tidyverse)
+require(broom)
+require(tidymodels)
+require(DT)
+require(MASS)
+require(magrittr)
+
+
+whiteside <- MASS::whiteside
+
+old_options <- options(digits = 3,
+                       DT.options = list(digits=3, 
+                                         pageLength = 5, 
+                                         language = list(search = 'Filter:')))
+
+
+
+```
+
+```{r}
+theme_set(theme_minimal())
+```
+
+
+```{r}
+#| echo: false
+#| eval: true
+#| appendix: true
+#| label: respons_df
+respons_df <-  . %>% 
+  mutate(across(where(is.double), \(x) signif(x, digits=3))) %>% 
+  DT::datatable(extensions = "Responsive")
+```
+
+
+```{r}
+#| echo: false
+#| eval: true
+#| appendix: true
+eqf <- . %>% 
+  enframe() %>% 
+  mutate(Fn=rank(value, ties.method = "max")/n()) %>% 
+  distinct(value, Fn) %>%  
+  arrange(value) %$%
+  stepfun(x=Fn, y=c(value, max(value)), f=1, right=T)
+```
+
+```{r}
+#| echo: false
+#| eval: true
+#| appendix: false
+#
+#
+ecdf_before <- whiteside %$%
+  ecdf(Temp[Insul=="Before"])
+
+#
+#
+eqf_after  <- whiteside |> 
+  filter(Insul=="After") |> 
+  pull(Temp) |> 
+  eqf()
+```
+
+```{r}
+#| echo: false
+#| eval: true
+#| appendix: true
+#| label: myqqplot
+
+#
+#
+my_qq <- function(df, fac, lev, quanti) {
+
+ecdf_lev <- df |>
+  filter({{fac}}==lev) |>
+  pull({{quanti}})  |>
+  ecdf()
+  
+eqf_other  <-  df |>
+  filter({{fac}}!=lev) |>
+  pull({{quanti}})  |>
+  eqf()
+
+df |>
+  filter({{fac}}==lev) |>
+  ggplot() +
+  aes(x={{quanti}},
+      y=eqf_other(ecdf_lev({{quanti}}))) +
+  geom_point(fill="white",
+             color="black",
+             alpha=.5 ) +
+  geom_abline(intercept = 0,
+              slope=1,
+              linetype="dotted") +
+  coord_fixed() +
+  theme_minimal()
+}  
+```
+
+```{r}
+#| echo: false
+#| eval: true
+#| appendix: true
+
+
+#
+#
+parallel_boxplot <- function(df, fac, quant){
+  
+  df |> 
+    ggplot() +
+    aes(x={{fac}}, y={{quant}}) +
+    geom_boxplot(varwidth = T, notch = T) +
+    theme_minimal()
+  
+}
+```
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+**Variable/Model selection and ANOVA  on Whiteside data**
+
+-   **`r stringr::str_glue('{params$curriculum}')`**
+-   **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+-   `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+-   `r stringr::str_glue("[Course Homepage]({params$homepage})")`\
+-   `r stringr::str_glue("[Moodle]({params$moodle})")`
+
+:::
+
+
+::: {#second-column}
+
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width="75"}
+
+:::
+
+:::
+
+
+
+## Challenge(s)
+
+```{r}
+#| echo: false
+#| eval: true
+#| appendix: false
+temp_label <- "Weekly average external temperature ⁰Celsius"
+gas_label <- "Week gas consumption 1000 cubic feet"
+```
+
+
+## Comparing weekly average temperatures over two seasons 
+
+We address the following question: was the external temperature distributed in the same way during the two heating seasons? When we raise this question, we silently make modeling assumptions. Spell them out. 
+
+
+::::: {.content-visible when-profile="solution"}  
+
+To oversimplify, we assume that the weekly outdoor temperature is a random variable, that it is independently and identically distributed over the course of each season. And we ask ourselves whether the two distributions are identical.
+
+To ask a simpler question, we may even assume that the distributions are Gaussian with equal variance and we may test for equality of means. 
+
+:::::
+
+What kind of hypothesis are we testing in the next two chunks? Interpret the results. 
+
+```{r}
+lm_temp <- lm(Temp ~ Insul, whiteside)
+
+lm_temp |> 
+  tidy()
+```
+
+```{r}
+lm_temp |> 
+  glance()
+```
+
+::::: {.content-visible when-profile="solution"}  
+
+We are testing equality of means in the normal model. Indeed we use two equivalent 
+devices to test the null hypothesis `Insul==0`. The $t$-test (first table) and the Fisher test (second table)  coincide (in this setting). Note that the $p$-values are identical event though the statistics differ. 
+
+The Fisher procedure tests the null hypothesis that all coefficients but the intercept are zero. 
+
+If we are ready to accept to err with probability less that $5\%$ under the null hypothesis, we cannot reject the null hypothesis.  
+
+:::::
+
+Display parallel boxplots, overlayed cumulative distribution functions and a quantile-quantile plot (QQ-plot) to compare the temperature distributions  during the two heating seasons. Comment
+
+::::: {.content-visible when-profile="solution"}  
+
+
+```{r}
+whiteside |> 
+  ggplot() +
+  aes(x=Insul, y=Temp) +
+  geom_boxplot(varwidth = T, outlier.shape = 3, notch = T) +
+  ylab(temp_label) +
+  labs(
+    title="Whiteside data: Outdoor temperature during two heating seasons"
+  )
+```
+
+The notches do overlap. There is not enough evidence to 
+rule out that the medians are the same.
+
+
+What's behind notch construction? 
+
+:::::
+
+::::: {.content-visible when-profile="solution"}  
+
+The comparison of ECDFs allows us to remove the normality assumption. 
+
+```{r}
+whiteside |> 
+  ggplot() +
+  aes(linetype=Insul, x=Temp) +
+  stat_ecdf() +
+  xlab(temp_label) +
+  ylab("Empirical Cumulative Distribution Function") +
+  ggtitle("Whiteside data: temperatures before and after insulation")
+```
+The two ECDFs seem to depart from each other. However, this does not tell us whether 
+this discrepancy is significant. We can complement this plot with a non-parametric test:
+the two-sample Kolmogorov-Smirnov test. 
+
+```{r}
+with(whiteside,
+  ks.test(Temp[Insul=="Before"], Temp[Insul=="After"])) |> 
+  tidy() |> 
+  knitr::kable()
+```
+Again the $p$-value is above $5\%$. 
+
+:::::
+
+
+
+::::: {.content-visible when-profile="sol_ution"}  
+
+The quantile-quantile plot serves the same purpose as the comparison of ECDFs. 
+Given two samples with ECDFs $F_n$ and $G_m$, quantile functions $F_n^{\leftarrow}$ 
+and $G_m^{\leftarrow}$, the quantile-quantile plot consists in plotting the graph of 
+$G_m^{\leftarrow}\circ F_n$. 
+
+If $F_n$ and $G_m$ are close enough, so are their generalized inverses. 
+
+::: {layout="[50,50]"}
+
+::: {#first-column}
+
+Base `R` offers a `qqplot` function that does the job.
+
+```{r}
+#| echo: false
+#| appendix: false
+#| 
+with(whiteside,
+  qqplot(x=Temp[Insul=="Before"],
+         y=Temp[Insul=="After"])
+)
+```
+
+
+:::
+
+
+
+
+::: {#second-column}
+
+It is possible draw two-samples `qqplot`s in the `tidyverse`. However this requires some work, namely the ability to manufacture the empirical quantile function of a sample.  
+
+```{r}
+#| echo: false
+my_qq(whiteside, Insul, "Before", Temp)
+```
+
+
+:::
+
+:::
+
+:::::
+
+## Perform a Wilcoxon test to assess change of Temperature between the two seasons
+
+::::: {.content-visible when-profile="solution"}  
+
+Besides, the KS test, Wilcoxon test (which is a rank-test) offers another possibility 
+of comparing the two empirical distributions. 
+
+```{r}
+#| caption: "Wilcoxon Rank Sum test"
+wilcox.test(formula= Temp ~ Insul, data=whiteside) |> 
+  tidy() |> 
+  knitr::kable()
+  # DT::datatable()
+```
+
+
+
+:::::
+
+# Does Insulation matter?
+
+- Does average Gas consumption change with Insulation?
+- Does Gas consumption dependence on Temperature change with Insulation?
+
+As we have to infer the *dependence on Temperature*, the questions turn tricky.
+
+## Compare Gas consumption before and after (leaving Temperature aside)
+
+::::: {.content-visible when-profile="solution"}  
+
+```{r}
+lm0_0 <- lm(Gas ~ Insul, whiteside)
+lm0_0 |> 
+  tidy() |> 
+  knitr::kable()
+```
+In contrast with our investigation of `Temp ~ Insul`, this computation suggests that the mena Gas consumption before and after insulation differ significantly. 
+
+
+```{r}
+parallel_boxplot(whiteside, Insul, Gas) + 
+  labs(title="Gas consumption distribution before and after Insulation")
+```
+The notches do not overlap. This suggests that the median of the two distributions are different (but are we ready to  assume that Gas consumptions are i.i.d?)
+
+:::::
+
+Draw a `qqplot` to compare Gas consumptions before and after insulation.
+
+::::: {.content-visible when-profile="solution"}  
+
+
+```{r}
+my_qq(whiteside, Insul, "Before", Gas) +
+   xlab("Gas before") +
+   ylab("Gas after") +
+   labs(title = "QQ plot")
+
+```
+
+:::::
+ 
+Compare  ECDFs of Gas consumption before and after insulation.
+
+::::: {.content-visible when-profile="solution"}  
+
+```{r}
+whiteside |> 
+  ggplot() +
+  aes(linetype=Insul, x=Gas) +
+  stat_ecdf() +
+  xlab(gas_label) +
+  ylab("Empirical Cumulative Distribution Function") +
+  ggtitle("Whiteside data: gas consumption before and after insulation")
+```
+
+:::::
+
+
+### Do Insulation and Temperature additively matter? 
+
+This consists in assessing whether the Intercept is modified after Insulation 
+while the slope is left unchanged. Which models should be used to assess this 
+hypothesis?
+
+
+::::: {.content-visible when-profile="solution"}  
+
+Models `Gas ~ Temp`  and `Gas ~ Insul + Temp` can do the job.
+
+```{r}
+lm0 <- lm(Gas ~ Insul + Temp, whiteside)
+
+lm0 |> 
+  tidy() |> 
+  knitr::kable()
+```
+
+The $t$-test on coefficient `Insul` is suggestive. 
+
+From model `lm0`, we can draw to parallel regression lines in the `Temp,Gas` plane.
+
+```{r}
+coeffs0 <- as.list(coefficients(lm0))
+
+whiteside |> 
+  ggplot()  +
+  aes(x=Temp, y=Gas) +
+  geom_point(aes(shape=Insul)) +
+  geom_abline(slope=coeffs0$Temp, intercept = coeffs0$`(Intercept)`, linetype="dotted") +
+  geom_abline(slope=coeffs0$Temp, intercept = coeffs0$`(Intercept)`+ coeffs0$InsulAfter, linetype="dashed") +
+  labs(
+    title= "Whiteside data two regression lines derived from `Gas ~ Insul + Temp`"
+  )
+  
+  
+```
+
+The fit looks better. 
+
+:::::   
+
+Draw the disgnostic plots for this model
+
+::::: {.content-visible when-profile="solution"}  
+
+```{r}
+source('../UTILS/my_diag_plots.R')
+```
+
+```{r}
+#draw_diag_plots(lm0)
+
+patchwork::plot_layout(ncol=2, nrow=2)
+
+(
+ make_p_diag_1(lm0) +
+  make_p_diag_2(lm0) +
+  make_p_diag_3(lm0) +
+  make_p_diag_5(lm0)
+) + patchwork::plot_annotation(caption=deparse(formula(lm0)))
+
+```
+
+It would be nice to supercharge our diagnostic plots by mapping `Insul`
+on the `shape` aesthetic.
+
+:::::
+
+### Do Insulation and Temperature matter and interact? 
+
+Find the formula and build the model.
+
+
+::::: {.content-visible when-profile="solution"}  
+
+```{r}
+lm1 <- lm(Gas ~ Insul * Temp, whiteside)
+
+lm1 |> 
+  tidy() |> 
+  knitr::kable()
+
+```
+
+:::::
+
+
+::::: {.content-visible when-profile="solution"}  
+
+From model `lm1`, we can draw again two regression lines in the `Temp,Gas` plane.
+
+```{r}
+coeffs1 <- as.list(coefficients(lm1))
+
+whiteside |> 
+  ggplot()  +
+  aes(x=Temp, y=Gas) +
+  geom_point(aes(shape=Insul)) +
+  geom_abline(slope=coeffs1$Temp, intercept = coeffs1$`(Intercept)`, linetype="dotted") +
+  geom_abline(slope=coeffs1$Temp + coeffs1$`InsulAfter:Temp`, 
+              intercept = coeffs1$`(Intercept)`+ coeffs1$InsulAfter, 
+              linetype="dashed") +
+  labs(
+      title=deparse(formula(lm1))
+      )
+
+```
+
+:::::
+
+::::: {.content-visible when-profile="solution"}  
+
+We can redo this plot in pure `ggplot`
+
+```{r}
+whiteside |> 
+  ggplot()  +
+  aes(x=Temp, y=Gas, group=Insul) +
+  geom_point(aes(shape=Insul)) +
+  geom_smooth(formula = 'y ~ x', 
+              data = filter(whiteside, Insul=="Before"), 
+              method="lm", se=F, 
+              linetype="dotted") + 
+  geom_smooth(formula = 'y ~ x', 
+              data = filter(whiteside, Insul=="After"), 
+              method="lm", se=F, 
+              linetype="dashed") 
+
+```
+
+:::::
+
+### Do Insulation and powers of temperature interact?
+
+Investigate formulae `Gas ~ poly(Temp, 2, raw=T)*Insul`, `Gas ~ poly(Temp, 2)*Insul`, 
+`Gas ~ (Temp +I(Temp*2))*Insul`, `Gas ~ (Temp +I(Temp*2))| Insul`
+
+
+::::: {.content-visible when-profile="solution"}  
+
+There are several ways to write concisely this model or an equivalent one.
+
+Using *orthogonal* polynomials
+
+```{r}
+lm2 <- lm(Gas ~ poly(Temp, 2, raw=T)*Insul, whiteside)
+
+lm2 |> 
+  tidy() |> 
+  knitr::kable()
+```
+
+Using raw polynomials 
+
+```{r}
+lm2_a <- lm(Gas ~ poly(Temp, 2, raw=F)*Insul, whiteside)
+
+lm2_a |> 
+  tidy() |> 
+  knitr::kable()
+```
+
+Compare the model matrices to understand what is going on.
+
+:::::
+
+::::: {.content-visible when-profile="solution"}  
+
+```{r}
+whiteside |> 
+  ggplot()  +
+  aes(x=Temp, y=Gas, group=Insul) +
+  geom_point(aes(shape=Insul)) +
+  geom_smooth(formula = 'y ~ x + I(x^2)', 
+              data = filter(whiteside, Insul=="Before"), 
+              method="lm", se=F, 
+              linetype="dotted") + 
+  geom_smooth(formula = 'y ~ x + I(x^2)', 
+              data = filter(whiteside, Insul=="After"), 
+              method="lm", se=F, 
+              linetype="dashed") +
+  labs(
+    title=deparse(formula(lm2_a))
+  )
+```
+
+:::::
+
+
+::::: {.content-visible when-profile="solution"}  
+
+A third way of sepcifying an equivalent model is: 
+
+```{r}
+lm3 <- lm(Gas ~ (Temp + I(Temp^2))*Insul, data = whiteside)
+```
+
+```{r}
+lm3 |> 
+  tidy() |> 
+  knitr::kable()
+```
+
+:::::
+
+
+
+
+## Higher degree polynomials 
+
+Play it with degree 10 polynomials
+
+::::: {.content-visible when-profile="solution"}  
+
+```{r}
+lm10 <- lm(Gas ~ poly(Temp, 10)*Insul, whiteside)
+lm10 |> 
+  broom::tidy() |> 
+  respons_df()
+```
+
+:::::
+
+
+## Drying model exploration
+
+### Collecting the models a posteriori
+
+Make a named list with the models constructed so far
+
+::::: {.content-visible when-profile="solution"}  
+
+```{r}
+#| eval: false
+lm_names <- ls()[str_starts(ls(), "lm")]
+
+lms <- lapply(as.list(lm_names), get)
+names(lms) <- lm_names
+```
+
+:::::
+
+
+# Use `stepAIC()` to perform stepwise exploration
+
+::::: {.content-visible when-profile="solution"}
+
+```{r}
+whi.stp <- stepAIC(lm3, scope = list( formula(lm0_0), formula(lm3)), trace=3)
+
+anova(whi.stp) |> 
+  broom::tidy() |> 
+  respons_df()
+```
+
+:::::
+
+# ANOVA table(s)
+
+Use fonction `anova()` to compare models constructed with
+formulae 
+
+```{r} 
+formula(lm0)
+``` 
+
+::::: {.content-visible when-profile="solution"}
+
+```{r}
+#| echo: true
+#| eval: true
+anova(lm0, lm3) |> 
+    broom::tidy() |> 
+    respons_df()
+```
+
+```{r}
+#| echo: true
+#| eval: true
+anova(lm0, lm2) |> 
+  broom::tidy() |> 
+  respons_df()
+```
+
+
+:::::
+
+
+
+# Wikipedia on Analysis of Variance
+
+
+```{r}
+#| eval: true 
+#| echo: false
+knitr::include_url("https://en.wikipedia.org/wiki/Analysis_of_variance")
+```
+
+
+::::: {.content-visible when-profile="solution"}  
+
+# Appendix 
+
+
+```{r}
+#| label: chunk-make-appendix
+#| ref.label: !expr knitr::all_labels(appendix==TRUE)
+#| echo: true
+#| eval: false
+#| code-fold: false
+```
+
+:::::
+
+
+
+
+

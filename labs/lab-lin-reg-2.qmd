@@ -1,0 +1,692 @@
+---
+title: "Linear regression"
+date: "`r Sys.time()`"
+
+execute:
+  echo: true
+  eval: true
+  collapse: true
+
+format:
+  html:
+    output-file: lab-lin-reg-2.html
+  pdf:
+    output-file: lab-lin-reg-2.pdf
+
+params:
+  truc: html
+  year: 2024 
+  curriculum: "M1 MIDS/MFA"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/eda"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=13227"
+  
+engine: knitr
+---
+
+```{r}
+#| label: setup-packages-foo
+#| message: false
+#| warning: false
+#| include: true
+#| 
+require(tidyverse)
+require(patchwork)
+require(httr)
+require(glue)
+require(broom)
+
+old_theme <- theme_set(theme_minimal())
+```
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+
+- **`r stringr::str_glue('{params$curriculum}')`**
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- `r stringr::str_glue("[Course Homepage]({params$homepage})")`  
+- `r stringr::str_glue("[Moodle]({params$moodle})")`
+
+::: 
+
+::: {#second-column}
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
+:::
+
+:::
+
+
+
+# Linear fit using ordinary least squares (OLS)
+
+- Perform linear regression of SAL_ACTUEL with respect to SAL_EMBAUCHE. Store the result in an object denoted by `lm_1`
+- Inspect the numerical summary of `lm_1`
+- Use `Environment` panel (Rstudio), to explore the structure of `lm_1`. Try to understand the signification of each element.
+
+
+```{r}
+datapath <- '../DATA'
+fname <- 'Banque.csv'
+fpath <- paste(datapath, fname, sep="/")
+```
+
+```{r}
+if (!file.exists(fpath)) {
+  baseurl <- 'https://stephane-v-boucheron.fr/data'
+  download.file(url=paste(baseurl, fname, sep="/"),
+                destfile=fpath)
+  print(glue::glue('File {fname} downloaded at {fpath}!'))
+} else {
+  print(glue::glue('File {fname} already exists at {fpath}!'))
+}
+```
+
+
+
+```{r}
+bank <- readr::read_table(fpath, 
+    col_types = cols(
+        SEXE = col_factor(levels = c("0", "1")), 
+        CATEGORIE = col_integer(), 
+        NB_ETUDES = col_integer(), 
+        SATIS_EMPLOI = col_factor(levels = c("non", "oui")), 
+        SATIS_CHEF = col_factor(levels = c("non", "oui")), 
+        SATIS_SALAIRE = col_factor(levels = c("non", "oui")),
+        SATIS_COLLEGUES = col_factor(levels = c("non", "oui")), 
+        SATIS_CE = col_factor(levels = c("non", "oui"))
+  )
+)
+```
+
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+lm_1 <- lm(formula = SAL_ACTUEL ~ SAL_EMBAUCHE, data=bank)
+
+lm2str_frm <- . %>%
+  formula() %>%
+  deparse()
+
+frm_1 <- lm2str_frm(lm_1)
+
+summary(lm_1)
+
+cor(lm_1$fitted.values, bank$SAL_ACTUEL)^2
+
+var(lm_1$fitted.values)/var(bank$SAL_ACTUEL)
+```
+:::
+
+
+- Make the model summary  a dataframe/tibble using `broom::tidy()`
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+lm_1 %>%
+  tidy() %>%      #<1>
+  knitr::kable(digit=2, caption = frm_1)
+```
+
+1. `tidy()` is a *generic* function that can be applied to very different classes of objects
+
+:::
+
+
+- Make model diagnostic information a dataframe/tibble using `broom::glance()`
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+lm_1 %>%
+  glance() %>%  #<1>
+  knitr::kable(digit=2, caption = frm_1)
+```
+1. `glance` is also a generic function
+
+:::
+
+- Preparing for diagnostic plots using `broom::augment()`
+
+::: {.content-visible when-profile="solution"}
+```{r}
+lm_1_aug <- lm_1 %>%     # <1>
+  augment(data=bank)     #<2> 
+
+lm_1_aug %>%  
+  DT::datatable(extensions = "Responsive")
+```
+1. `lm_1` is list with many named components
+2. The output of `augment` is a dataframe built from informations gathered in `lm_1` and in `bank`
+:::
+
+The output of `augment` may be described as adding 6 columns to dataframe `bank`. The six columns are built using items from `lm_1`. Can you explain their meaning and why they are relevant to diagnosing?
+
+::: {.content-visible when-profile="solution"}
+```{r}
+lm_1_aug %>%
+  select(starts_with(".")) %>%
+  head() %>%
+  knitr::kable(digits=2, caption = frm_1)
+```
+:::
+
+Let base `R` produce diagnostic plots
+
+```{r}
+#| eval: false
+plot(lm_1, which = 1:6)
+```
+
+We will reproduce (and discuss) four of the six diagnostic plots provided by the `plot` method from base `R` (1,2,3,5).
+
+- Reproduce first diagnostic plot with `ggplot` using the aumented version of `lm_1` (`augment(lm_1)`).
+
+::: {.content-visible when-profile="solution"}
+```{r}
+p_1_lm_1 <- lm_1_aug %>%
+  ggplot() +
+  aes(x=.fitted, y=.resid)+
+  geom_point(alpha=.5, size=.5) +
+  geom_smooth(formula = y ~ x,
+              method="loess",
+              se=F,
+              linetype="dotted",
+              linewidth=.5,
+              color="black") +
+  xlab("Fitted values") +
+  ylab("Residuals)") +
+  ggtitle("Bank dataset",
+          subtitle = frm_1) +
+  labs(caption = "Residuals versus Fitted")
+```
+:::
+
+- Comment Diagnostic Plot 1.
+- Compute the correlation coefficient between residuals and fitted values.
+
+- Make your graphic pipeline a reusable function.
+
+::: {.content-visible when-profile="solution"}
+```{r}
+make_p_diag_1 <- function(lm.){
+  augment(lm.) %>%
+  ggplot() +
+  aes(x=.fitted, y=.resid)+
+  geom_point(alpha=.5, size=.5) +
+  geom_smooth(method="loess",
+              formula = y ~ x,
+              se=F,
+              linetype="dotted",
+              size=.5,
+              color="black") +
+  xlab("Fitted values") +
+  ylab("Residuals)") +
+  labs(title = "Residuals versus Fitted")
+}
+```
+:::
+
+- What are *standardized residuals* ?
+- Build the third diagnostic plot (square root of absolute values of standardized residuals versus fitted values) using `ggplot`.
+- Why should we look at the square root of standardized residuals?
+
+::: {.content-visible when-profile="solution"}
+```{r}
+p_3_lm_1 <- lm_1_aug %>%
+  ggplot() +
+  aes(x=.fitted, y=sqrt(abs(.std.resid))) +
+  geom_smooth(formula = y ~ x,
+              se=F,
+              method="loess",
+              linetype="dotted",
+              size=.5,
+              color="black") +
+  xlab("Fitted values") +
+  ylab("sqrt(standardized residuals)") +
+  geom_point(size=.5, alpha=.5) +
+  ggtitle("Bank dataset",
+          subtitle = frm_1) +
+  labs(caption = "Scale location")
+```
+:::
+
+Make your graphic pipeline a reusable function.
+
+::: {.content-visible when-profile="solution"}
+```{r}
+make_p_diag_3 <-  function(lm.){
+  augment(lm.) %>%
+  ggplot() +
+  aes(x=.fitted, y=sqrt(abs(.std.resid))) +
+  geom_smooth(formula = y ~ x,
+              method="loess",
+              se=F,
+              linetype="dotted",
+              size=.5,
+              color="black") +
+  xlab("Fitted values") +
+  ylab("sqrt(standardized residuals)") +
+  geom_point(size=.5, alpha=.5) +
+  labs(title = "Scale location")
+}
+```
+:::
+
+- What is leverage ?
+- Build the fifth diagnostic plot (standardized residuals versus leverage) using `ggplot`.
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+p_5_lm_1 <- lm_1_aug %>%
+  ggplot() +
+  aes(x=.hat, y=((.std.resid))) +
+  geom_point(size=.5, alpha=.5) +
+  xlab("Leverage") +
+  ylab("Standardized residuals") +
+  ggtitle("Bank dataset",
+           subtitle = frm_1)
+
+# plot(lm.1, which = 5)
+```
+:::
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+make_p_diag_5 <-  function(lm.){
+  augment(lm.) %>%
+  ggplot() +
+  aes(x=.hat, y=((.std.resid))) +
+  geom_point(size=.5, alpha=.5) +
+  xlab("Leverage") +
+  ylab("Standardized residuals") +
+  labs(title = "Standardized residulas versus Leverages")
+}
+```
+:::
+
+In the second diagnostic plot (the residuals qqplot), we build a quantile-quantile plot by plotting  function $F_n^{\leftarrow} \circ \Phi$ where $\Phi$ is the ECDF of the standard Gaussian distribution while $F^\leftarrow_n$.
+
+##  Build the second diagnostic plot using `ggplot`
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+p_2_lm_1 <- lm_1_aug %>%
+  ggplot() +
+  aes(sample=.resid) +
+  geom_qq(size=.5, alpha=.5) +
+  stat_qq_line(linetype="dotted",
+              size=.5,
+              color="black") +
+  ggtitle("Bank dataset",
+          subtitle = frm_1) +
+  labs(caption="Residuals qqplot") +
+  xlab("Theoretical quantiles") +
+  ylab("Empirical quantiles of residuals")
+
+# plot(lm_1, which = 2)
+```
+:::
+
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+make_p_diag_2 <-  function(lm.){
+  augment(lm.) %>%
+  ggplot() +
+  aes(sample=.resid) +
+  geom_qq(size=.5, alpha=.5) +
+  stat_qq_line(linetype="dotted",
+              size=.5,
+              color="black") +
+  labs(title="Residuals qqplot")
+}
+```
+:::
+
+##  Use package `patchwork::...`  to collect your four diagnostic plots
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+lyt <- patchwork::plot_layout(ncol=2, nrow=2)
+
+(make_p_diag_1(lm_1) +
+make_p_diag_2(lm_1) +
+make_p_diag_3(lm_1) +
+make_p_diag_5(lm_1) ) +
+  patchwork::plot_annotation(caption='SAL_ACTUEL ~ SAL_EMBAUCHE') # DRY this ?
+```
+
+```{r}
+p_1_lm_1 + p_2_lm_1 + p_3_lm_1 + p_5_lm_1
+```
+:::
+
+## Plot actual values against fitted values for `SAL_ACTUEL`
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+p_1_bis_lm_1 <- lm_1_aug %>%
+  ggplot() +
+  aes(x=.fitted, y=SAL_ACTUEL)+
+  geom_point(alpha=.5, size=.5) +
+  geom_smooth(formula = y ~ x,
+              method="loess",
+              se=F,
+              linetype="dotted",
+              size=.5,
+              color="black") +
+  xlab("Fitted values") +
+  ylab("SAL_ACTUEL") +
+  ggtitle("Bank dataset",
+          subtitle = frm_1) +
+  labs(caption = "SAL_ACTUEL versus Fitted")
+
+p_1_bis_lm_1
+```
+
+:::
+
+
+
+#  Play it again with `AGE` and `SAL_ACTUEL`
+
+Redo the above described steps and call the model `lm_2`.
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+lm_2 <- lm(SAL_ACTUEL ~ AGE, data=bank)
+
+lm_2 %>%
+  tidy()
+```
+
+
+```{r}
+lyt <- patchwork::plot_layout(ncol=2, nrow=2)
+
+make_p_diag_1(lm_2) +
+  make_p_diag_2(lm_2) +
+  make_p_diag_3(lm_2) +
+  make_p_diag_5(lm_2)
+```
+
+:::
+
+- `ggplot` programming : write a function with arguments `df`, `varx` and `vary` where `varx` and `vary` are
+two strings denoting numerical columns in `df`, that outputs a ggplot object made of a scatterplot of columns `vary` and `vary`, 
+a linear regression of `vary` against `varx`. The ggplot plot object should be annotated with the linear correlation coefficient 
+of `vary` and `varx` and equipped with a title.  
+
+
+
+```{r}
+bank %>%
+  ggplot() +
+  aes(x=AGE, y=SAL_ACTUEL) +
+  geom_point(alpha=.5, size=.5, ) +
+  geom_smooth(method="lm", formula= y ~ x, se=F) +
+  annotate(geom="text", x=60, y=60000,
+           label=str_c("rho = ",
+                       round(cor(bank$SAL_ACTUEL, bank$AGE), 2))) +
+  ggtitle("Bank dataset")
+```
+
+
+```{r}
+ggplot_lin_reg <-  function(df, varx, vary){
+  rho <- round(cor(df[[varx]], df[[vary]]), 2) 
+  posx <- sum(range(df[[varx]])*c(.25 , .75))
+  posy <- sum(range(df[[vary]])*c(.5 , .5))
+  
+  df %>%
+    ggplot() +
+    aes(x=.data[[varx]], y=.data[[vary]]) +
+    geom_point(alpha=.5, size=.5, ) +
+    geom_smooth(method="lm", formula= y ~ x, se=F) +
+    annotate(geom="text", x=posx, y=posy,
+           label=glue("Linear Cor. Coeff.: {rho}")) +
+    ggtitle(glue("Linear regression: {vary} ~ {varx}"))
+}
+
+ggplot_lin_reg(bank, "AGE", "SAL_ACTUEL")
+```
+
+
+Inspect rows with high Cook's distance
+
+::: {.content-visible when-profile="solution"} 
+
+```{r}
+lm_1_aug %>%
+  filter(.cooksd> 2*mean(.cooksd)) %>%
+  select(-starts_with(".")) %>%
+  DT::datatable()
+```
+
+:::
+
+##  Discuss the relevance of Simple Linear Regression for analyzing the connection between `SAL_ACTUEL` and `AGE`
+
+##  Compute the Pearson correlation coefficient for every pair of quantitative variable? Draw corresponding scatterplots.
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+bank %>%
+#  select(-id) %>%
+  select(where(is.numeric)) %>%
+  corrr::correlate() %>%
+  corrr::shave() %>%
+  corrr::rplot()
+```
+
+:::
+
+
+# Predictive linear regression of `SAL_ACTUEL` as a function of age `AGE`
+
+
+To perform linear fitting, we choose $450$ points amongst the $474$ sample points: the $24$ remaining points are used to assess the merits of the linear fit.
+
+
+## Randomly select $450$ rows in the `banque` dataframe.
+Function `sample` from base `R`  is convenient. You may also enjoy `slice_sample()` from `dplyr`. Denote by `trainset` the vector of of selected indices. Bind the vector of left behind indices to variable `testset`. Functions `match`, `setdiff` or operator `%in%` may be useful.
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+old_seed <- set.seed(42)
+
+trainset_size <-  450
+
+trainset <- sample(seq(nrow(bank)) , trainset_size)
+
+testset <- setdiff(seq(nrow(bank)) , trainset)
+
+trainset <- as.integer(trainset)
+testset <- as.integer(testset)
+```
+:::
+
+
+
+- [ ]  Linear fit of `SAL_ACTUEL` with respect to `AGE`, on the training set. Call the result `lm_3`.
+- [ ] How do you feel about such a linear fit? (Use diagnostic plots)
+
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+lm_3 <- lm(SAL_ACTUEL ~ AGE, data=bank[trainset,] )
+# 
+lm_3_aug <-  lm_3 %>%
+  augment(data=bank[trainset,] )
+```
+
+:::
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+lm_3 %>%
+  augment(data=bank[trainset,]) %>%
+  ggplot() +
+  aes(x=AGE, y=SAL_ACTUEL) +
+  geom_point(alpha=.5, size=.5) +
+  geom_smooth(method="lm", formula= y ~ x, se=F) +
+  annotate(geom="text", x=60, y=60000,
+           label=str_c("rho = ",
+                       round(cor(bank$SAL_ACTUEL, bank$AGE), 2))) +
+  ggtitle("Bank dataset",
+          subtitle = "Red: test set, Blue: high Cook's distance") +
+  geom_point(data=augment(lm_3, newdata=bank[testset,]),
+             color="red",
+             alpha=.85, size=1) +
+  geom_point(data=filter(lm_3_aug, .cooksd> 2*mean(.cooksd)),
+             color="blue",
+             alpha=.85, size=1
+             )
+```
+
+:::
+
+
+Inspecting points with high Cook's distance
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+lm_3_aug %>%
+  filter(.cooksd> 2*mean(.cooksd)) %>%
+  select(-starts_with(".")) %>%
+  DT::datatable()
+```
+
+:::
+
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+#| fig.cap: "SAL_ACTUEL ~ AGE on training set"
+#| 
+make_p_diag_1(lm_3) +
+make_p_diag_2(lm_3) +
+make_p_diag_3(lm_3) +
+make_p_diag_5(lm_3)
+```
+
+:::
+
+- [ ] Use `lm_3`  to predict the values of `SAL_ACTUEL` as an affine function of `AGE` on the testing set `testset` (`broom::augment()` with optional argument `newdata` may be useful). Compare the data frame with the one obtained from `augment(lm_3)`.
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+lm_3_aug_test <- augment(lm_3, newdata = bank[testset,])
+```
+
+:::
+
+
+- [ ] Compare training error and testing error
+- [ ] Analyse residuals (prediction errors) on the testing set. Compare with training set
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+(make_p_diag_1(lm_3) %+% lm_3_aug_test) +
+(make_p_diag_2(lm_3) %+% lm_3_aug_test)
+```
+
+:::
+
+
+# Expectations under Gaussian Linear Modelling Assumptions
+
+
+$$
+  \begin{pmatrix}
+    Y
+  \end{pmatrix} =   \begin{pmatrix}
+      \mathbb{Z}
+    \end{pmatrix} \times \beta + \sigma \begin{pmatrix}
+      \epsilon
+    \end{pmatrix}
+$$
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+old_seed <- set.seed(5783)
+
+# lm_1 %>% 
+#   tidy()
+
+#lm_1 %>% summary
+```
+
+:::
+
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+lm2design <- . %$%     # exposing pipe from magrittr
+  select(.$model, -ncol(.$model)) %>% 
+  mutate(ctt = 1) %>% 
+  select(ctt, everything()) %>% 
+  as.matrix() # design matrix 
+
+```
+
+:::
+
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+sigma_hat <- sqrt(sum(lm_1$residuals^2)/lm_1$df.residual)
+
+sal_actuel_fake <- lm2design(lm_1) %*% lm_1$coefficients + 
+  sigma_hat * rnorm(nrow(lm_1$model))
+  
+lm_1_fake <- bind_cols(bank, 
+                       SAL_ACTUEL_FAKE= sal_actuel_fake) %>% 
+  lm(formula=SAL_ACTUEL_FAKE ~ SAL_EMBAUCHE, data=.)
+```
+
+:::
+
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+summary(lm_1_fake)
+```
+
+:::
+
+::: {.content-visible when-profile="solution"}
+
+```{r}
+# 
+make_p_diag_1(lm_1_fake) +
+make_p_diag_2(lm_1_fake) +
+make_p_diag_3(lm_1_fake) +
+make_p_diag_5(lm_1_fake)
+```
+:::
+

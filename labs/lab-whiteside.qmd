@@ -1,0 +1,893 @@
+---
+title: "Linear regression, diagnostics, variable selection"
+date: "`r Sys.time()`"
+
+execute:
+  echo: true
+  eval: true
+  collapse: true
+
+
+format:
+  html:
+    output-file: lab-whiteside.html
+  pdf:
+    output-file: lab-whiteside.pdf
+
+params:
+  truc: html
+  year: 2024 
+  curriculum: "M1 MIDS & MFA"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/eda"
+  moodle: ""
+  
+engine: knitr
+---
+
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+
+
+- **`r stringr::str_glue('{params$curriculum}')`**
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- `r stringr::str_glue("[Course Homepage]({params$homepage})")`  
+- `r stringr::str_glue("[Moodle]({params$moodle})")`
+
+::: 
+
+::: {#second-column}
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
+:::
+
+:::
+
+
+# Linear Regression on Whiteside data
+
+## Packages installation and loading  (again)
+
+We will use the following packages. If needed, we install them. 
+```{r}
+#| label: setup-packages
+#| message: false
+#| warning: false
+#| include: true
+stopifnot(
+  require(tidyverse), 
+                  require(broom),
+                  require(magrittr),
+                  require(lobstr),
+                  require(ggforce),
+#                  require(cowplot),
+                  require(patchwork), 
+                  require(glue),
+                  require(DT), 
+                  require(viridis)
+)
+
+
+```
+
+
+
+
+```{r}
+#| include: false
+old_theme <- theme_set(theme_minimal())
+```
+
+
+# Dataset
+
+```{r}
+whiteside <- MASS::whiteside # no need to load the whole package
+
+cur_dataset <- str_to_title(as.character(substitute(whiteside)))
+ 
+# ?whiteside
+```
+
+> Mr Derek Whiteside of the UK Building Research Station recorded the weekly gas consumption and average external temperature at his own house in south-east England for two heating seasons, one of 26 weeks before, and one of 30 weeks after cavity-wall insulation was installed. The object of the exercise was to assess the effect of the insulation on gas consumption.
+
+
+```{r}
+whiteside %>% 
+  glimpse
+```
+
+
+# Start with columnwise and pairwise exploration
+
+```{r}
+C <- whiteside %>% 
+  select(where(is.numeric)) %>% 
+  cov()
+
+# Covariance between Gas and Temp
+
+mu_n <- whiteside %>% 
+  select(where(is.numeric)) %>% 
+  colMeans()
+
+# mu_n # Mean vector
+```
+$$
+C_n = \begin{bmatrix}
+7.56 & -2.19\\
+-2.19 & 1.36
+\end{bmatrix} \qquad \mu_n = \begin{bmatrix}
+4.88\\
+4.07
+\end{bmatrix}
+$$
+
+Use `skimr::skim()` to write univariate reports
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+sk <- whiteside %>% 
+  skimr::skim() %>% 
+  select(-n_missing, - complete_rate)
+
+skimr::yank(sk, "factor")
+
+skimr::yank(sk, "numeric")
+```
+
+:::
+
+:::
+
+
+Build a scatterplot of the Whiteside dataset
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r whiteside-scatter}
+p <- whiteside %>% 
+  ggplot() +
+  aes(x=Temp, y=Gas) +
+  geom_point(aes(shape=Insul)) +
+  xlab("Average Weekly Temperature Celsius") +
+  ylab("Average Weekly Gas Consumption 1000 cube feet")
+
+p + 
+  ggtitle(glue("{cur_dataset} data"))
+
+```
+
+:::
+
+:::
+
+
+Build boxplots of `Temp` and  `Gas` versus `Insul`
+
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+
+q <- whiteside %>% 
+  ggplot() +
+  aes(x=Insul)
+
+qt <- q + 
+  geom_boxplot(aes(y=Temp))
+
+qg <- q + 
+  geom_boxplot(aes(y=Gas))
+
+(qt + qg) +
+  patchwork::plot_annotation(title = glue("{cur_dataset} data"))
+```
+
+:::
+
+:::
+
+Build violine plots  of `Temp` and `Gas` versus `Insul`
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+```{r}
+
+(q + 
+  geom_violin(aes(y=Temp))) +
+(q + 
+  geom_violin(aes(y=Gas))) +
+  patchwork::plot_annotation(title = glue("{cur_dataset} data"))
+```
+
+:::
+
+:::
+
+
+Plot histograms of `Temp` and `Gas` versus `Insul`
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+
+r <- whiteside %>% 
+  pivot_longer(cols=c(Gas, Temp),
+              names_to = "Vars",
+              values_to = "Vals") %>% 
+  ggplot() +
+  aes(x=Vals)  +
+  facet_wrap(~ Insul + Vars ) + 
+  xlab("")
+
+r +
+  geom_histogram(alpha=.3, fill="white", color="black") +
+  ggtitle(glue("{cur_dataset} data"))
+```
+
+:::
+
+:::
+
+Plot density estimates of  `Temp` and `Gas` versus `Insul`.
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+
+r +
+  stat_density(alpha=.3 , 
+               fill="white", 
+               color="black", 
+               bw = "SJ",
+               adjust = .5 ) +
+  ggtitle(glue("{cur_dataset} data"))
+```
+
+:::
+
+:::
+
+Hand-made calculatoin of simple linear regression estimates for `Gas` versus `Temp`
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+
+
+b <- C[1,2] / C[1,1] # slope 
+
+a <- whiteside %$%  # exposing pipe from magrittr
+  (mean(Gas) - b * mean(Temp)) # intercept
+
+# with(whiteside,
+#     mean(Gas) - b * mean(Temp)) 
+```
+
+:::
+
+:::
+
+Overlay the scatterplot with the regression line.
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+
+p + 
+  geom_abline(slope=b, intercept = a) +
+  ggtitle(glue("{cur_dataset} data"), subtitle = "Least square regression line")
+```
+
+:::
+
+:::
+
+
+# Using `lm()`
+
+`lm` stands for Linear Models. Function `lm` has a number of arguments, including: 
+
+- formula
+- data
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+lm0 <- lm(Gas ~ Temp, data = whiteside)
+```
+
+The result is an object of class `lm`. The generic function `summary()` has a method for class `lm`
+
+```{r}
+
+lm0 %>% 
+  summary()
+```
+
+The summary is made of four parts 
+
+- The call. Very useful if we handle many different models (corresponding to different formulae, or different datasets)
+- A numerical summary of residuals
+- A commented display of the estimated coefficients
+- Estimate of noise scale (under Gaussian assumptions)
+- Squared linear correlation coefficient between response variable $Y$ (`Gas`) and predictions $\widehat{Y}$
+- A test statistic (Fisher's statistic) for assessing null hypothesis that slope is null, and corresponding $p$-value (under Gaussian assumptions).
+
+:::
+
+:::
+
+Including a rough summary in a report is not always a good idea. It is easy to extract a tabular version of the summary using functions `tidy()` and `glance()` from package `broom`. 
+
+For html output `DT::datatable()` allows us to polish the final output
+
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+tidy_lm <-  . %$% ( 
+  tidy(.) %>% 
+  mutate(across(-c(term, p.value), \(x) round(x, digits=2)),
+         p.value = signif(p.value, 3)) %>% 
+  DT::datatable(extensions="Responsive",
+                options = list(dom = 't'), 
+                caption = glue("Dataset {call$data},  {deparse(call$formula)}"))
+)
+
+tidy_lm(lm0)
+```
+
+:::
+
+:::
+
+
+Function `glance()` extract informations that can be helpful when performing model/variable selection. 
+
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+
+glance_lm <-  . %$% (
+  glance(.) %>% 
+  mutate(across(-c(p.value), 
+                ~ round(.x, digits=2)),
+         p.value=signif(p.value,3)) %>% 
+  DT::datatable(extensions="Responsive",
+                options = list(dom = 't'), 
+                caption = glue("Dataset {call$data},  {deparse(call$formula)}"))
+)
+
+glance_lm(lm0)
+```
+
+:::
+
+:::
+
+`R` offers a function `confint()` that can be fed with objects of class `lm`. Explain the output of this function.
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-note title="Solution"}
+
+```{r}
+confint(lm0, level=.99)
+```
+
+:::
+
+:::
+
+
+# Diagnostic plots
+
+Method `plot.lm()` of generic S3 function `plot`  from base `R` offers six diagnostic plots. By default it displays four of them. 
+
+What are the diagnostic plots good for? 
+
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+plot(lm0)  
+```
+
+The motivation and usage of diagnostic plots is explained in detail in the book by Fox and Weisberg: *An R companion to applied regression*.
+
+
+:::
+
+:::
+
+These diagnostic plots can be built from the information gathered in the `lm` object returned by `lm(...)`. 
+
+{{< fa broom >}} It is convenient to extract the required pieces of information using method `augment.lm`. of *generic function* `augment()` from package `broom`. 
+
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+#| label: augment-lm0 
+whiteside_aug <- lm0 %>% 
+  augment(whiteside)
+
+lm0 %$% ( # exposing pipe !!! 
+  augment(., data=whiteside) %>% 
+  mutate(across(!where(is.factor), ~ signif(.x, 3))) %>% 
+  group_by(Insul) %>% 
+  sample_n(5) %>% 
+  ungroup() %>% 
+   DT::datatable(extensions="Responsive",
+                caption = glue("Dataset {call$data},  {deparse(call$formula)}"))
+)
+```
+
+:::
+
+:::
+
+Recall that in the output of `augment()`
+
+- `.fitted`: $\widehat{Y} = H \times Y= X \times \widehat{\beta}$ 
+- `.resid`: $\widehat{\epsilon} = Y - \widehat{Y}$ residuals, $\sim (\text{Id}_n - H) \times \epsilon$ 
+- `.hat`: diagonal coefficients of Hat matrix $H$ 
+- `.sigma`: is meant to be the estimated standard deviation of components of  $\widehat{Y}$
+
+Compute the share of *explained variance* 
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+whiteside_aug %$% {
+  1 - (var(.resid)/(var(Gas)))
+}
+
+# with(whiteside_aug,
+#   1 - (var(.resid)/(var(Gas)))
+```
+
+:::
+
+:::
+
+Plot residuals against fitted values 
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+
+diag_1 <- whiteside_aug %>% 
+  ggplot() +
+  aes(x=.fitted, y=.resid)+
+  geom_point(aes(shape= Insul), size=1, color="black") +
+  geom_smooth(formula = y ~ x,
+              method="loess",
+              se=F,
+              linetype="dotted",
+              linewidth=.5,
+              color="black") +
+  geom_hline(yintercept = 0, linetype="dashed") +
+  xlab("Fitted values") +
+  ylab("Residuals)") +
+  labs(caption = "Residuals versus Fitted")
+```
+
+:::
+
+:::
+
+
+Fitted against square root of standardized residuals.
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+diag_3 <- whiteside_aug %>%
+  ggplot() +
+  aes(x=.fitted, y=sqrt(abs(.std.resid))) +
+  geom_smooth(formula = y ~ x,
+              se=F,
+              method="loess",
+              linetype="dotted",
+              linewidth=.5,
+              color="black") +
+  xlab("Fitted values") +
+  ylab("sqrt(|standardized residuals|)") +
+  geom_point(aes(shape=Insul), size=1, alpha=1) +
+  labs(caption = "Scale location")
+```
+
+:::
+
+:::
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+
+```{r}
+diag_2 <- whiteside_aug %>% 
+  ggplot() +
+  aes(sample=.std.resid) +
+  geom_qq(size=.5, alpha=.5) +
+  stat_qq_line(linetype="dotted",
+              linewidth=.5,
+              color="black") +
+  coord_fixed() +
+  labs(caption="Residuals qqplot") +
+  xlab("Theoretical quantiles") +
+  ylab("Empirical quantiles of standadrdized residuals")
+```
+
+:::
+
+:::
+
+TAF
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+(diag_1 + diag_2 + diag_3 + guide_area()) + 
+  plot_layout(guides="collect") +
+  plot_annotation(title=glue("{cur_dataset} dataset"),
+                  subtitle = glue("Regression diagnostic  {deparse(lm0$call$formula)}"), caption = 'The fact that the sign of residuals depend on Insul shows that our modeling is too naive.\n The qqplot suggests that the residuals are not collected from Gaussian homoschedastic noise.'
+                  )
+```
+
+:::
+
+:::
+
+
+# Taking into account Insulation
+
+Design a *formula* that allows us to take into account the possible 
+impact of Insulation. Insulation may impact the relation between weekly `Gas` consumption and average external `Temperature` in two ways. Insulation may modify the `Intercept`, it may also modify the slope, that is the sensitivity of `Gas` consumption  with respect to average external `Temperature`. 
+
+::: {.callout-tip}
+
+Have a look at formula documentation (`?formula`).
+
+:::
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+
+```{r}
+lm1 <- lm(Gas ~ Temp * Insul, data = whiteside)
+```
+
+:::
+
+:::
+
+Check the design using function `model.matrix()`. How can you relate this augmented design and the *one-hot encoding* of variable `Insul`?
+
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+
+model.matrix(lm1) |>
+  head()
+
+```
+
+:::
+
+:::
+
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+lm1 %>% 
+  tidy_lm()
+```
+
+:::
+
+:::
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+lm0 |>
+  glance_lm()
+lm1 %>% 
+  glance_lm()
+```
+
+:::
+
+:::
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+p +
+  geom_smooth(formula='y ~ poly(x, 2)',linewidth=.5, color="black",linetype="dashed",  method="lm", se=FALSE)+
+  aes(color=Insul) +
+  geom_smooth(aes(linetype=Insul), 
+              formula='y ~ x',linewidth=.5, color="black", method="lm", se=FALSE) +
+  scale_color_manual(values= c("Before"="red", "After"="blue")) +
+  geom_abline(intercept = 6.8538, slope=-.3932, color="red") +
+  geom_abline(intercept = 6.8538 - 2.13, slope=-.3932 +.1153, color="blue") + labs(
+    title=glue("{cur_dataset} dataset"),
+    subtitle = glue("Regression: {deparse(lm1$call$formula)}")
+    )
+```
+
+:::
+
+:::
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r lm1-diagnostics}
+whiteside_aug1 <-  augment(lm1, whiteside)
+
+(diag_1 %+% whiteside_aug1) +
+(diag_2 %+% whiteside_aug1) +
+(diag_3 %+% whiteside_aug1) +  
+ guide_area() +
+  plot_layout(guides = "collect") +
+  plot_annotation(title=glue("{cur_dataset} dataset"),
+                  subtitle = glue("Regression diagnostic  {deparse(lm1$call$formula)}"), caption = 'One possible outlier.\n Visible on all three plots.'
+                  )
+```
+
+The formula argument defines the design matrix and the Least-Squares problem used to estimate the coefficients.
+
+:::
+
+:::
+
+
+Function `model.matrix()` allows us to inspect the design matrix. 
+
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r design_matrix}
+model.matrix(lm1) %>% 
+  as_tibble() %>% 
+  mutate(Insul=ifelse(InsulAfter,"After", "Before")) %>% 
+  ungroup() %>% 
+  DT::datatable(caption=glue("Design matrix for {deparse(lm1$call$formula)}"))
+```
+
+```{r design-matrix}
+X <- model.matrix(lm1)
+```
+
+:::
+
+:::
+
+
+In order to solve le Least-Square problems, we have to compute 
+$$(X^T \times X)^{-1} \times X^T$$
+This can be done in several ways.
+
+`lm()` uses QR factorization. 
+
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+
+```{r QR-design-matrix}
+Q <- qr.Q(lm1$qr)
+R <- qr.R(lm1$qr)  # R is upper triangular 
+
+norm(X - Q %*% R, type="F") # QR Factorization
+
+signif(t(Q) %*% Q, 2)      # Q's columns form an orthonormal family
+
+H <- Q %*% t(Q)             # The Hat matrix 
+
+norm(X - H %*% X, type="F") # H leaves X's columns invariant
+norm(H - H %*% H, type="F") # H is idempotent
+
+
+
+# eigen(H, symmetric = TRUE, only.values = TRUE)$values
+```
+
+```{r solving-normal-equations}
+sum((solve(t(X) %*% X) %*% t(X) %*% whiteside$Gas - lm1$coefficients)^2)
+```
+
+Once we have the QR factorization of $X$, solving the normal equations boils down to inverting a triangular matrix. 
+
+```{r solving-normal-equations-r}
+sum((solve(R) %*% t(Q) %*% whiteside$Gas - lm1$coefficients)^2)
+```
+
+:::
+
+:::
+
+```{r}
+#matador::mat2latex(signif(solve(t(X) %*% X), 2))
+```
+
+$$
+(X^T \times X)^{-1} = \begin{bmatrix}
+0.18 & -0.026 & -0.18 & 0.026\\
+-0.026 & 0.0048 & 0.026 & -0.0048\\
+-0.18 & 0.026 & 0.31 & -0.048\\
+0.026 & -0.0048 & -0.048 & 0.0099
+\end{bmatrix}
+$$
+
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+
+```{r fitted-H-matrix}
+whiteside_aug1 %>% 
+  glimpse()
+```
+
+:::
+
+:::
+
+
+Understanding `.fitted` column
+
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+sum((predict(lm1, newdata = whiteside) - whiteside_aug1$.fitted)^2)
+
+sum((H %*% whiteside_aug1$Gas - whiteside_aug1$.fitted)^2)
+```
+
+:::
+
+:::
+
+
+Understanding `.resid`
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+sum((whiteside_aug1$.resid + H %*% whiteside_aug1$Gas - whiteside_aug1$Gas)^2)
+```
+
+:::
+
+:::
+
+
+Understanding `.hat`
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+sum((whiteside_aug1$.hat - diag(H))^2)
+```
+
+:::
+
+:::
+
+
+
+Understanding `.std.resid` 
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+```{r}
+sigma_hat <- sqrt(sum(lm1$residuals^2)/lm1$df.residual)
+
+lm1 %>% glance() 
+```
+
+$$
+\widehat{r}_i = \frac{\widehat{\epsilon}_i}{\widehat{\sigma} \sqrt{1 - H_{i,i}}}
+$$
+
+
+```{r}
+sum((sigma_hat * sqrt(1 -whiteside_aug1$.hat) * whiteside_aug1$.std.resid - whiteside_aug1$.resid)^2)
+```
+
+
+:::
+
+:::
+
+Understanding column `.sigma` 
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+
+Column `.sigma` contains the *leave-one-out* estimates of $\sigma$, that is `whiteside_aug1$.sigma[i]` is the estimate of $\sigma$ you obtain by leaving out the `i` row of the dataframe. 
+
+{{< fa wand-magic-sparkles >}} There is no need to recompute everything for each sample element.
+
+$$
+\widehat{\sigma}^2_{(i)} =  \widehat{\sigma}^2 \frac{n-p-1- \frac{\widehat{\epsilon}_i^2}{\widehat{\sigma}^2 {(1 - H_{i,i})}}\frac{}{}}{n-p-2}
+$$
+
+:::
+
+:::
+
+

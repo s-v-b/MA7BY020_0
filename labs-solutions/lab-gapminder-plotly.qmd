@@ -1,0 +1,1 @@
+../labs/lab-gapminder-plotly.qmd

@@ -1,0 +1,133 @@
+---
+title: "Introduction to Life Tables"
+
+format:
+  html:
+    output-file: lab-life-tables.html
+  pdf:
+    output-file: lab-life-tables.pdf
+
+execute: 
+  eval: true
+  echo: true
+  collapse: true
+
+
+params:
+  year: 2024 
+  curriculum: "M1 MIDS"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/isidata"
+---
+
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+{{< meta title >>}}
+
+- **`r stringr::str_glue('{params$curriculum}')`**
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- `r stringr::str_glue("[Course Homepage]({params$homepage})")`  
+- `r stringr::str_glue("[Moodle]({params$moodle})")`
+
+::: 
+
+::: {#second-column}
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
+:::
+
+:::
+
+
+```{r}
+#| label: setup
+#| warning: false
+#| message: false
+#| echo: false
+
+stopifnot(
+  require(tidyverse),
+  require(DT),
+  require(skimr),
+  require(GGally),
+  require(broom),
+  require(patchwork),
+  require(ggforce),
+  require(glue),
+  require(ggfortify),
+  require(magrittr),
+  require(tidymodels),
+  require(viridis),
+  require(gt),
+  require(ggforce), 
+  require(kableExtra),
+  require(DT)
+)
+
+tidymodels::tidymodels_prefer(quiet = TRUE)
+
+old_theme <- ggplot2::theme_set(
+  ggplot2::theme_bw(
+    base_size=9, 
+    base_family = "Helvetica")
+  )
+```
+
+[tidyverse conflicts](https://tidyverse.tidyverse.org/reference/tidyverse_conflicts.html)
+
+```{r}
+#| echo: false
+#| 
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  comment=NA,
+  prompt=FALSE,
+  cache=FALSE,
+  echo=TRUE,
+  results='asis'
+)
+```
+
+```{r}
+#| echo: false
+#| eval: true
+#|
+source(file = "../_UTILS/make_biotiful.R")
+```
+
+
+
+
+# Life tables from Human Mortality Databaase
+
+Period data versus Cohort data 
+
+[Human Mortality Database](https://www.mortality.org/Home/Index)
+
+
+Download period life tables for both sexes for countries in the following list: France, Spain, Belgium, Denmark, Sweden, Italy, Norway, Switzerlan, England & Wales, Netherlands. See [Data Availability Section](https://www.mortality.org/Data/DataAvailability)
+
+## Different kinds of data 
+
+## Life tables 
+
+## Table wrestling
+
+# Tail function, hazard, cumulative hazard 
+
+# Life expectancy, residual life expectancy
+
+# La Belle Époque
+
+# First World War and Spanish Flu
+
+
+
+
+[R4Data Science Tidy](https://r4ds.had.co.nz/tidy-data.html#tidy-data-1)
+
+

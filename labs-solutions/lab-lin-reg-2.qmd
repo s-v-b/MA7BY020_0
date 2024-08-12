@@ -1,0 +1,1 @@
+../labs/lab-lin-reg-2.qmd

@@ -1,0 +1,905 @@
+---
+title: Vectors in  R
+date: "`r Sys.time()`"
+
+execute:
+  echo: true
+  eval: true
+  collapse: false
+
+
+format:
+  html:
+    output-file: lab-vctrs.html
+    code-fold: false
+  pdf:
+    output-file: lab-vctrs.pdf
+
+params:
+  truc: html
+  year: 2024 
+  curriculum: "M1 MIDS"
+  university: "Université Paris Cité"
+  homepage: "https://s-v-b.github.io/MA7BY020"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=13227"
+  
+engine: knitr
+---
+
+
+```{r}
+#| include: false
+#| message: false
+#| warning: false
+stopifnot(
+  require(here),
+  require(patchwork),
+  require(glue),
+  require(tidyverse),
+  require(vctrs),   # S3 vectors
+  require(lobstr),  # Object size and addresses
+  require(rlang),   # types ...
+  require(sloop),  # Explore objects
+  require(lubridate)  # Dates and Datetimes
+)
+
+old_theme <- theme_set(theme_minimal())  # ggplot2
+```
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+
+
+- **`r stringr::str_glue('{params$curriculum}')`**
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- `r stringr::str_glue("[Course Homepage]({params$homepage})")`  
+- `r stringr::str_glue("[Moodle]({params$moodle})")`
+
+::: 
+
+::: {#second-column}
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
+:::
+
+:::
+
+[Vectors in R](https://adv-r.hadley.nz/vectors-chap.html)
+
+[`vctrs` package](https://vctrs.r-lib.org)
+
+
+::: {.callout-warning}
+
+### Objectives 
+
+
+:::
+
+# Atomic vectors
+
+
+In `R` parlance, *vectors* denote very general forms of sequences, that is objects  that 
+can be indexed using `[[]]`,  subseted/sliced using `[]`, and combined using `c()`. We often 
+confuse vectors and *atomic vectors*. @fig-tree-vectors from [Advanced R by Wickham](https://adv-r.hadley.nz/vectors-chap.html) outlines that *atomic vectors* are special cases of vectors (just as *lists*).
+
+![Atomic vectors as vectors](/images/summary-tree-vectors-R-hadley.png){#fig-tree-vectors fig-align="right" width=50%}
+
+::: {.callout-tip}
+
+### Reading assignments
+
+Read first [Vectors in R for Data Science 1st editon](https://r4ds.had.co.nz/vectors.html?q=vector#vectors), then [Vectors in Advanced R programming](https://adv-r.hadley.nz/vectors-chap.html).
+
+:::
+
+In words, atomic vectors are homogeneous vectors where all items have the same type. This criterion is questionable, since defining the type of an object in `R` is not obvious. There is a type hierarchy, and objects may have several types. Nevertheless we may use `typeof()` to   determine the *storage* mode of an object.  
+
+## Basic atomic vectors
+
+Basic atomic vectors are sequences of objects with the simplest storage modes. 
+
+![Common atomic vectors](/images/summary-tree-atomic-hadley.png){#fig-basic-vectors fig-align="right" width=50%}
+
+
+
+
+## Null values
+
+::: {.callout-note}
+
+### Question
+
+Try to determine which items in a vector are NULL
+
+```{r}
+#| code-fold: false
+#| eval: false
+x <- c(NA, 3, NA, 7, 13)
+x == NA
+```
+
+Explain the output. Fix it. 
+
+:::
+
+::: {.callout-note}
+
+### Question
+
+What happens when you combine (with `c()`) atomic vectors with different base types?
+
+```{.r}
+x <- c(1L:3L)
+y <- letters[5:9]
+z <- rep(c(TRUE, FALSE), 2)[1:3]
+x ; y ; c(x,y) ;  c(x,z) ; c(y,z)
+```
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-note}
+
+### Solution
+
+The `R` interpreter performs *coercion*. 
+
+1. `c(x,y)` triggers coercion from integers to characters
+1. `c(x,z)` triggers coercion from logicals to integers
+1. `c(y,z)` triggers coercion from logicals to characters
+
+::: 
+:::
+
+
+## Attributes
+
+
+::: {.callout-note}
+
+### Question
+
+Attributes are metadata. 
+
+```{r}
+x <- as_date("2024-08-06") + 1:7
+is_vector(x) ; is_atomic(x) ; class(x) ; typeof(x)
+
+attributes(x)
+
+names(x) <- wday(x, label=T, abbr=F)
+
+x
+
+attributes(x)
+
+x[["mercredi"]]
+
+attr(x, "names")
+```
+
+
+
+:::
+
+# Less basic atomic vectors
+
+
+::: {.callout-note}
+
+### Question
+
+What are `raw` vectors good for?
+
+:::
+
+::: {.callout-note}
+
+### Question
+
+What is the difference between `POSIXlt` and `POSIXct`? (Ask chatgpt)
+
+
+:::
+
+
+::: {.callout-note}
+
+### Question 
+
+What does `is.atomic()` do? 
+
+:::
+
+
+::: {.callout-note}
+
+### Question 
+
+Is it possible to have an atomic vector with type/class `POSIXct`? `POSIXlt`? Are the answers of `class`and `typeof` always identical/consistent?
+
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-note}
+
+### Solution
+
+```{r}
+x <- seq(from=as_datetime("2024-07-28"), 
+  to=as_datetime("2024-08-11"), 
+  length.out=15)
+
+typeof(x) ; class(x) ; is.atomic(x)
+```
+
+```{r}
+y <- as.POSIXlt(x)
+
+typeof(y) ; class(y) ; is.atomic(y)
+```
+
+```{r}
+x[[1]] ;  y[[1]] ; x[[1]] == y[[1]] ; identical(x[[1]], y[[1]])
+```
+
+```{r}
+attributes(y) ; unlist(y[[1]])
+```
+
+:::
+
+:::
+
+
+::: {.callout-note}
+
+### Question 
+
+Explain the following
+
+```{r}
+x <- "A Man A Plan a Canal Panama"
+y <-  rep("A Man A Plan a Canal Panama", 5)
+is.character(y) ; obj_size(x) ; obj_size(y)
+```
+:::
+
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip}
+
+### Solution 
+
+```{r}
+obj_addrs(x); obj_addrs(y)
+```
+
+The string "A Man A Plan a Canal Panama" is a literal constant. It is not duplicated.
+Vector entries contain addresses of the literal constant.    
+
+::: 
+
+:::
+
+::: {.callout-note}
+
+### Question 
+
+Is an object of type `factor`  a vector? an atomic vector? 
+
+:::
+
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip}
+
+### Solution
+
+```{r}
+x <- sample(letters[1:10], 20, replace = T)
+x <- factor(x)
+attributes(x) 
+
+typeof(x) ; class(x) ; is.vector(x) ; is.atomic(x)
+```
+
+Note the contrast between $is.vector(x)$  and $is.atomic(x)$. 
+
+`is_vector()` from `rlang` sends another message:
+```{r}
+is_vector(x) ; is_atomic(x)
+```
+
+::: 
+
+:::
+
+
+::: {.callout-note}
+
+### Question (Exercise 20.4.6.2 from [R for Data Science 1st Ed](https://r4ds.had.co.nz/vectors.html?q=vector#vectors))
+
+Carefully read the documentation of `is.vector()`. What does it actually test for? Why does is.`atomic()` not agree with the definition of atomic vectors above?
+
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip}
+
+### Solution
+
+
+::: 
+:::
+
+
+Factors, Dates, and  Date-times are cases of [Augmented vectors](https://r4ds.had.co.nz/vectors.html?q=vector#augmented-vectors).
+
+
+# Recalling [S3 classes](https://adv-r.hadley.nz/s3.html)
+
+A basetype object with at least a `class` attribute.
+
+Attribute `Class` is used to implement the S3 object oriented system.
+
+In the next chunk `x` is a vector with basettype `double` but class `Date`. Each item in `x` is interpreted as the number of days ellapsed since the origin of time according to Unix `1970-01-01`.
+It is printed accordingly.
+
+```{r}
+#| code-fold: false
+x <- as.Date("2024-08-06") + 1:7
+
+class(x) ; typeof(x)
+```
+
+```{r}
+
+#| code-fold: false
+x |> 
+  unclass()|>
+  str()
+```
+
+`as.Date()` is an example of generic function from base `R`.
+
+```{r}
+#| code-fold: false
+as.Date
+```
+
+The chunk above used method `as.Date.character()`
+```{r}
+#| code-fold: false
+methods("as.Date")  # methods("as.Date")
+```
+
+
+
+
+```{r}
+#| code-fold: false
+#| eval: false
+getS3method("as.Date", "character")  # as.Date.character
+```
+
+## Examples
+
+Factors have basetype `integer` and attribute `factor` and `levels`. 
+
+```{r}
+ctr_names <- factor(ISOcodes::ISO_3166_1$Name)
+
+ctr_names |> 
+  str()
+```
+
+```{r}
+class(ctr_names); str(attributes(ctr_names))
+```
+
+```{r}
+ctr_names |> 
+  unclass()  |> 
+  str()
+```
+
+
+Examples of important S3 classes
+
+- `lm`
+- `kmeans`
+- `prcomp`
+- `hclust`
+
+::: {.callout-note}
+
+### Question 
+
+Explain
+
+```{r}
+ctr_names |>
+  str_to_upper() |>
+  str()
+```
+
+
+```{r}
+
+```
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip}
+
+### Solution
+
+`str_to_upper()` is a function (not an S3 Generic). It tansforms the *levels* of `ctr_names` to uppercase. 
+
+Try: 
+
+```{.r}
+ctr_names |>
+  unclass() |>
+  str_to_upper()
+```
+
+:::
+
+:::
+
+## History
+
+## Relevance: S3 generics 
+
+An S3 object behaves differently from its underlying base type when it is passed to a *generic* function.
+
+What is a *generic*? 
+
+::: {.callout-note}
+
+### Question
+
+- What happens if an S3 object is passed to a *generic*?
+- What is method dispatch?
+- What kind of MRO (Method Resolution Order) is used? 
+- How would you register a new method for a generic?
+- How do you define a generic?
+- Give examples of generics in base `R`.
+- Get the list of base `R` functions which are generics.
+
+:::
+::: {.content-visible when-profile='solution'} 
+
+::: {.callout-tip}
+
+### Solution
+
+```{r}
+s3_dispatch(str(x)) 
+
+s3_dispatch(as.Date("2024-06-31"))
+```
+
+S3 methods are functions with a special naming scheme, `generic.class()`. 
+
+
+```{r}
+ls(package:base) |>  
+  purrr::map_chr(
+    \(x) { 
+      y <- get(x)
+      if (rlang::is_function(y) &&
+          any(stringr::str_detect(sloop::ftype(y), "generic"))) {
+        x
+      } else 
+      ""
+    }  
+  ) |> 
+  stringr::str_unique()
+```
+
+[]()
+
+
+
+```{r}
+t <- Sys.time() + period(1, units="hour")* 1:7 
+u <- unclass(t)
+str(t) ; str(u)
+```
+
+We can rebuild a vector with the same properties as `t` using `structure()`:
+
+```{r}
+v <- structure(u, class=c("POSIXct", "POSIXt"))
+v |> str()
+```
+
+
+
+::: 
+ 
+:::
+
+::: {.callout-note}
+
+### Question
+
+
+:::
+
+
+## Preserving attributes
+
+```{r}
+
+```
+
+
+
+# S3 vectors as collections
+
+In @lst-simple-loop, `collection` may denote a list, a vector, or any other iterable sequence you can encounter in `R`. 
+
+Vectors deserve special consideration.  
+
+[Documentation](https://vctrs.r-lib.org/articles/s3-vector.html)
+
+[S3 vectors in Advanced R Programming](https://adv-r.hadley.nz/s3.html)
+
+# Desirable properties of vectors 
+
+## Combining vectors using `c()`
+
+
+
+
+# `vctrs`  and S3 vectors
+
+Package [`vctrs`](https://vctrs.r-lib.org) makes the life of developpers who rely on S3 vectors easier. 
+
+## Creating a new S3 vector class
+
+
+In package `nycflights13`, in tibble `flights`, columns with names ending with 
+`dep_time` or `arr_time` have basetype `integer`. 
+```{r}
+stopifnot(
+  require(nycflights13)
+)
+
+flights |> 
+  select(ends_with('_time')) |>
+  glimpse()
+```
+
+Nevertheless,  these columns encode  time information (hour, minute, second) in an unusual way. The last two digits represent minutes, the leading digits represent hours. In the sequel, we define an S3 vector class with basetype `integer` that will allow us to handle these columns in a transparent way. Desirable properties are
+
+- Readable display: `517` should be displayed as `5h17m`
+- Some time arithmetics should be possible: we should be able either to add `difftime` or to compute the difference between `dep_time` and `sched_dep_time`
+- Some validation should be possible: `2517` is not a valid value for `dep_time`
+- Casting to `datetime` should be easy
+- Casting from `datetime` should be easy as well
+- ...
+
+We use the tools from article [S3 vectors](https://vctrs.r-lib.org/articles/s3-vector.html)
+
+
+::: {.callout-note}
+
+### Question
+
+Create a new S3 vector class called `weird_tm`. Endow it with a constructor `new_weird_tm()`, an helper `weird_tm()`, a test `is_weird_tm()`. 
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+
+::: {.callout-tip}
+
+### Solution
+
+```{r}
+new_weird_tm <- function(x = integer()) {
+  if (!is_integer(x)) {
+    abort("`x` must be a integer vector.")
+  }
+  new_vctr(x, class = "weird_tm")
+}
+```
+
+```{r}
+weird_dep_time <- new_weird_tm(flights$dep_time)
+
+attributes(weird_dep_time)
+
+is_integer(weird_dep_time) ; class(weird_dep_time) ; typeof(weird_dep_time)
+```
+
+```{r}
+weird_tm <- function(x=integer()){
+  x <- vec_cast(x, integer())
+  new_weird_tm(x)
+}
+
+is_weird_tm <- function(x){
+  inherits(x, "weird_tm")
+}
+```
+
+```{r}
+is_weird_tm(weird_dep_time) ; is_weird_tm(flights$dep_time)
+```
+
+
+```{r}
+
+```
+
+:::
+
+ 
+:::
+
+::: {.callout-note}
+
+### Question
+
+Define a `format()` function for class `weird_tm`. Mind  NAs.
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip}
+
+### Solution
+
+```{r}
+format.weird_tm <- function(x, ...){
+  out_h <- vec_data(x) %/% 100
+  out_m <- vec_data(x) %% 100
+  out <- str_c(out_h, "H", out_m, "m") 
+  out[is.na(x)] <- NA
+  out
+}
+
+vec_ptype_abbr.weird_tm <- function(x, ...) {
+  "wrd_tm"
+}
+```
+
+```{r}
+tibble(weird_dep_time)
+
+tibble(weird_dep_time) |> glimpse()
+```
+
+::: 
+:::
+
+::: {.callout-note}
+
+### Question
+
+Casting and coercion
+
+The next piece of code does not work
+```{.r}
+c(weird_tm(flights$dep_time[1:5]), flights$dep_time[1:5])
+```
+
+We need to define casting methods for generics `vec_cast()` and `vec_ptype2()`
+at least for casting to `integer` and `character`.
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip}
+
+### Solution
+
+```{r}
+vec_ptype2.weird_tm.integer <- function(x,y, ...){
+  integer()
+}
+
+vec_ptype2.integer.weird_tm <- function(x,y, ...){
+  integer()
+}
+
+vec_ptype2(weird_tm(), NA_integer_)
+vec_ptype2(weird_dep_time, flights$dep_time)
+
+vec_ptype_show(weird_tm(), integer(), weird_tm())
+```
+
+```{r}
+vec_cast.weird_tm.weid_tm <- function(x, to, ...) x
+
+vec_cast.weird_tm.integer <- function(x, to, ...) weird_tm(x)
+vec_cast.integer.weird_tm <- function(x, to, ...) vec_data(x)
+vec_cast.character.weird_tm <- function(x, to, ...) format(x)
+```
+
+```{r}
+vec_cast.weird_tm.character <- function(x, to, ...) {
+  out <- stringr::str_match(x, "([\\d]{1,2})H([\\d]{2})m")
+  if(!is.matrix(out)) {       # handling borderline setting
+    out <- matrix(out, ncol=3)
+  }
+  out <- out[,2:3, drop=F]   # Why drop=F ?
+  out <- 100L * as.integer(out[,1]) + as.integer(out[,2])
+  out
+}
+```
+
+See [Regular expressions in R for Data Science](https://r4ds.hadley.nz/regexps)
+
+```{r}
+vec_cast.weird_tm.POSIXct <-  function(x, to, ...){
+  weird_tm(100L * hour(x) + minute(x))
+}
+
+vec_cast(now(), weird_tm())
+```
+
+
+:::
+
+:::
+
+::: {.callout-note}
+
+### Question
+
+Transform the tibble `flights` so that columns with name ending with `_time` (except `air_time`)
+have type `weird_time`. Is it still possible to filter rows with `dep_time` is a prescribed 
+time interval. 
+
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip}
+
+### Solution
+
+```{r}
+flights_wrd <- flights |> 
+  mutate(across(ends_with("_time") & where(is_integer), weird_tm)) 
+  
+flights_wrd |>
+  filter(between (dep_time, 1200L, 1300L)) |> 
+  glimpse()
+```
+
+::: 
+ 
+:::
+
+
+We will use tools from [`vctrs`](https://vctrs.r-lib.org/articles/s3-vector.html#arithmetic) to define differences between `weird_tm` objects. 
+
+
+::: {.callout-note}
+
+### Question
+
+Double dispatch. 
+
+
+:::
+
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip}
+
+```{r}
+vec_arith.weird_tm <- function(op, x, y, ...) {
+  UseMethod("vec_arith.weird_tm", y)
+}
+vec_arith.weird_tm.default <- function(op, x, y, ...) {
+  stop_incompatible_op(op, x, y)
+}
+```
+::: 
+
+:::
+
+::: {.callout-note}
+
+### Question
+
+Define the difference `-` operator for two vectors of class `weird_tm`. The result is expected to be an `integer` vector.
+
+:::
+
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip}
+
+### Solution
+
+
+```{r}
+weird_tm_diff <- function(x, y){
+  x <- vec_data(x)
+  y <- vec_data(y)
+  out <- 60L * ((x %/% 100L) - (y %/% 100L)) + ((x %% 100L) - (y %% 100L))  
+  out 
+}
+```
+```{r}
+vec_arith.weird_tm.weird_tm <- function(op, x, y, ...) {
+  switch(
+    op,
+    "-" = weird_tm_diff(x, y),
+    stop_incompatible_op(op, x, y)
+  )
+}
+```
+
+We can now compare our estimated `dep_delay`, `arr_delay`, with the table columns. We also attempt to compare `air_time` and the difference between `arr_time` and `dep_time`. We observe huge differences. 
+
+
+
+```{r}
+flights_wrd |>
+  filter(between(dep_delay, 30,40)) |>
+  slice_sample(n=20) |>  
+  mutate(my_dep_delay = dep_time - sched_dep_time) |>
+  mutate(my_arr_delay = arr_time - sched_arr_time) |>
+  mutate(my_air_time = arr_time - dep_time) |>
+  mutate(sched_air_time = sched_arr_time - sched_dep_time) |>
+  select(ends_with('delay'), ends_with('air_time'))
+```
+
+```{r}
+#| echo: false
+#| eval: false
+flights_wrd |>
+  filter(!is.na(air_time)) |>
+  mutate(my_air_time = arr_time - dep_time) |>
+  filter(!is.na(my_air_time)) |>
+  group_by(origin, dest) |>
+  summarise(sd_disc=sd(air_time-my_air_time))
+
+
+```
+
+
+::: 
+ 
+:::
+
+
+# Further reading 
+
+## {{< fa book >}}
+
+
+## {{< fa blog >}}
+
+- [Object Oriented Programming in R part 1 to ...](https://www.appsilon.com/post/object-oriented-programming-in-r-part-1)
+
+## {{< fa video >}}
+
+{{< video https://www.youtube.com/watch?v=P3FxCvSueag >}}

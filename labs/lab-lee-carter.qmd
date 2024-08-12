@@ -1,0 +1,1269 @@
+---
+date: "`r Sys.time()`"
+
+execute:
+  echo: true
+  eval: true
+  collapse: true
+  message: false
+  warning: false
+  fold: true
+
+format:
+  html:
+    output-file: lab-lee-carter.html
+  pdf:
+    output-file: lab-lee-carter.pdf
+
+params:
+  truc: html
+  year: 2024 
+  curriculum: "M1 MIDS  MA7BY020"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/scidon"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=6143"
+  year_p: 1948
+  year_e: 2016
+  
+
+engine: knitr
+---
+
+
+```{r}
+#| include: true
+#| message: false
+#| warning: false
+
+stopifnot(
+  require(patchwork),
+  require(httr),
+  require(glue),
+  require(ineq),
+  require(here),
+  require(skimr),
+  require(magrittr),
+  require(plotly),
+  require(tidyverse)
+)
+
+old_theme <- theme_set(theme_minimal())
+```
+
+
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+
+
+- **`r stringr::str_glue('{params$curriculum}')`**
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- `r stringr::str_glue("[Course Homepage]({params$homepage})")`  
+- `r stringr::str_glue("[Moodle]({params$moodle})")`
+
+::: 
+
+::: {#second-column}
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
+:::
+
+:::
+
+
+
+## Data sources
+
+Life data tables are downloaded from [https://www.mortality.org](https://www.mortality.org).
+
+See also [https://www.lifetable.de](https://www.lifetable.de).
+
+If you install and load package [https://cran.r-project.org/web/packages/demography/index.html](https://cran.r-project.org/web/packages/demography/index.html), you will also find life data tables.
+
+
+We investigate life tables describing countries from Western Europe (France, Great Britain --actually England and Wales--, Italy, the Netherlands, Spain, and Sweden) and the United States.
+
+We load the one-year lifetables for female, male and whole population for the different countries.
+
+
+```{r coding_tables}
+#| echo: false
+country_code <- list(fr_t='FRATNP',
+                     fr_c='FRACNP',
+                     be='BEL',
+                     gb_t='GBRTENW',
+                     gb_c='GBRCENW',
+                     nl='NLD',
+                     it='ITA',
+                     swe='SWE',
+                     sp='ESP',
+                     us='USA')
+
+countries <- c('fr_t', 'gb_t', 'nl', 'it', 'sp', 'swe', 'us')
+
+country_names <- list(fr_t='France',     # total population
+                     fr_c='France',      # civilian population
+                     be='Belgium',
+                     gb_t='England & Wales',    # total population
+                     gb_c='England & Wales',    # civilian population
+                     nl='Netherlands',
+                     it='Italy',
+                     swe='Sweden',
+                     sp='Spain',
+                     us='USA')
+
+gender_names <- list('b'='Both',
+                     'f'='Female',
+                     'm'='Male')
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+datafile <- 'full_life_table.Rds'
+fpath <- str_c("./DATA/", datafile) # here::here('DATA', datafile)   # check getwd() if problem 
+
+if (! file.exists(fpath)) {
+  download.file("https://stephane-v-boucheron.fr/data/full_life_table.Rds", 
+                fpath,
+                mode="wb")
+}
+
+life_table <- readr::read_rds(fpath)
+```
+
+```{r}
+life_table |>
+  dplyr::mutate(Country = forcats::as_factor(Country)) |>
+  dplyr::mutate(Country = forcats::fct_relevel(Country, "Spain", "Italy", "France", "England & Wales", "Netherlands", "Sweden", "USA")) |>
+  dplyr::mutate(Gender = forcats::as_factor(Gender)) -> life_table
+
+life_table |>
+  dplyr::mutate(Area =forcats::fct_collapse(Country, 
+                                            SE = c("Spain", "Italy", "France"), 
+                                            NE = c("England & Wales", "Netherlands", "Sweden"), 
+                                            USA="USA")) -> life_table
+```
+
+
+Check on [http://www.mortality.org](http://www.mortality.org) the meaning of the different columns:
+
+Document [Tables de mortalité françaises pour les XIXe et XXe siècles et projections pour le XXIe siècle](https://www.lifetable.de/data/FRA/FRA000018061997CY1.pdf) contains
+detailed information on the construction of Life Tables for France.
+
+Two kinds of Life Tables can be distinguished: *Table du moment* which
+contain for each calendar year, the mortality risks at different ages for that very year; and *Tables de génération* which contain for a given birthyear, the   mortality risks
+at which an individual born during that year has been exposed. 
+
+  The life tables investigated in this homework are *Table du moment*. According to the document by Vallin and Meslé, building the life tables  required ,decisions and doctoring.
+
+See (among other things)
+
+- p. 19 Abrupt changes in mortality quotients at some ages for a given calendar year
+- Estimating mortality quotients at great age.
+
+Have a look at [Lexis diagram](https://en.wikipedia.org/wiki/Lexis_diagram).
+
+Definitions can be obtained from [www.lifeexpectancy.org](http://www.lifeexpectancy.org/lifetable.shtml). We translate
+it into mathematical (rather than demographic) language. Recall that the quantities
+define a probability distribution over $\mathbb{N}$. This probability distribution
+is a _construction_ that reflects the health situation in a population at a given time.
+This probability distribution does not describe the sequence of sanitary situations experienced
+by a _cohort_ (people born during a specific year).
+
+> One  works with a period, or current, life table (_table du moment_). This summarizes the mortality experience of persons across all ages in a short period, typically one year or three years. More precisely, the death probabilities $q(x)$ for every age $x$ are computed for that short period, often using census information gathered at regular intervals. These $q(x)$'s are then applied to a hypothetical cohort of $100 000$ people over their life span to produce a life table. 
+
+```{r}
+life_table |> 
+  filter(Country=='France', Year== 2010, Gender=='Female', Age < 10 | Age > 80)
+```
+
+
+
+In the sequel, we denote by $F_{t}$ the _cumulative distribution function_ for year $t$. We agree on $\overline{F}_t = 1 - F_t$ and $F_t(-1)=0$.  
+
+
+```{r}
+#| label: "sanity checks"
+life_table |> 
+  filter( Year>=1948) |> 
+  group_by(Country, Year, Gender) |> 
+  summarise(m1 =max(abs(lx -dx -lead(lx)), na.rm = T), 
+            m2 =max(abs(lx * qx -dx), na.rm=T),
+            m3 =max(abs(Lx -lx * (1 + qx * (ax-1))), na.rm=T),
+            m4 =max(abs(1-exp(-mx)-qx), na.rm=T)) |> 
+  select(Year, Country, Gender, m1, m2, m3, m4) |>  
+  ungroup() |> 
+  group_by(Country, Gender) |> 
+  slice_max(order_by = desc(m4), n = 1)
+```
+
+
+
+
+`qx`
+: (age-specific) risk of death at age $x$, or mortality quotient at given age $x$ for given year $t$:
+$q_{t,x} = \frac{\overline{F}_t(x) - \overline{F}_t(x+1)}{\overline{F}_t(x)}$.  
+For each year, each age, $q_{t,x}$ is determined by data. 
+We also have $$\overline{F}_{t}(x+1) = \overline{F}_{t}(x) \times (1-q_{t,x+1})\, .$$
+
+
+`mx`
+: *central death rate* at age $x$  during year $t$. This is connected with $q_{t,x}$ by
+$$m_{t,x} = -\log(1- q_{t,x}) \,,$$ 
+
+or equivalently $q_{t,x} = 1 - \exp(-m_{t,x})$. 
+
+
+
+`lx`
+: the so-called _survival function_: the scaled proportion of persons alive at age $x$. These values are computed recursively from the $q_{t,x}$ values using the formula 
+$$l_t(x+1) = l_t(x) \times (1-q_{t,x}) \, ,$$
+with $l_{t,0}$, the "radix" of the table, arbitrarily set to $100000$.
+Function $l_{t,\cdot}$ and $\overline{F}_t$ are connected by 
+$$l_{t,x + 1} = l_{t,0} \times \overline{F}_t(x)\,.$$
+Note that in Probability theory, $\overline{F}$ is also called the survival or tail function. 
+
+
+
+`dx`
+: $d_{t,x} = q_{t,x} \times l_{t,x}$
+
+`Tx`
+: Total number of person-years lived by the cohort from age $x$ to $x+1$. This is the sum of the years lived by the $l_{t, x+1}$ persons who survive the interval, and the $d_{t,x}$ persons who die during the interval. The former contribute exactly $1$ year each, while the latter contribute, on average, approximately half a year, so that $L_{t,x} = l_{t,x+1} + 0.5 \times d_{t,x}$. This approximation assumes that deaths occur, on average, half way in the age interval x to x+1. Such is satisfactory except at age 0 and the oldest age, where other approximations are often used; 
+_We will stick to a simplified vision 
+$L_{t,x}= l_{t,x+1}$_
+
+`ex`:
+: Residual Life Expectancy at age $x$ and year $t$
+
+
+
+
+## Loading `life_table` onto an in memory database
+
+We load `life_table` into an in memory database,  unleashing the full power of SQL.
+This is helpful if we have to use window functions.
+
+```{r memdb_frame, echo=FALSE, eval=TRUE}
+lt <- dbplyr::memdb_frame(select(life_table,
+                                 Year, Age, qx, Country, Gender))
+
+lt |>
+  filter(Gender == 'Female', Country== 'USA', 'Year'==1948) |>
+  show_query()
+```
+
+Object `lt` can be queried like any other data frame.
+
+```{r usebackend}
+con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+src <- dbplyr::src_dbi(con, auto_disconnect = TRUE)
+
+dplyr::copy_to(src, lt)
+```
+
+Computing residual life expectancies at all ages can also be completed
+using SQL queries.
+
+## Western countries in 1948
+
+Several pictures share a common canvas: we plot central death rates against ages using a logarithmic scale on the
+$y$ axis. Countries are identified by aesthetics (shape, color, linetypes). Abiding to the DRY principle, we define
+a prototype `ggplot`  (alternatively `plotly`) object. The prototype will be fed with different datasets and decorated
+and arranged for the different figures.
+
+```{r protogg}
+dummy_data <- dplyr::filter(life_table, FALSE)
+
+proto_plot <- ggplot(dummy_data,
+                     aes(x=Age,
+                         y=qx,
+                         col=Area,
+                         linetype=Country,
+                         shape=Country)) +
+              scale_y_log10() +
+              scale_x_continuous(breaks = c(seq(0, 100, 10), 109)) +
+              ylab("Mortality quotients") +
+              labs(linetype="Country") +
+              theme_bw()
+```
+
+
+
+- Plot `qx` of all Countries at all ages for years 1948 and 2013.
+
+```{r 65_years, message=FALSE, warning=FALSE, echo=FALSE}
+# year_p <- 1948
+# year_e <- 2017
+
+with(params,
+  (proto_plot %+% (
+    life_table |> 
+    dplyr::filter(Year %in% c(year_p, year_e), 
+      Age<90,
+       Gender != 'Both')) +
+    geom_point(size=.1) +
+    geom_line(size=.2) +
+    labs(title = glue("European countries and US, {year_p}-{year_e}"),
+    subtitle = "Sweden and the Netherlands consistently ahead") +
+    facet_grid(rows=vars(Year), cols=vars(Gender))
+  ) |> 
+    plotly::ggplotly()
+)
+```
+
+
+```{r film_1948_2013}
+proto_plt2 <-
+  ggplot() +
+  aes(x=Age, y=qx, colour=Area, frame=Year, linetype=Country) +
+  geom_point(size=.1) +
+  geom_line(size=.1) +
+  scale_y_log10() +
+  labs(linetype=c("Country")) +
+  scale_x_continuous(breaks = c(seq(0, 100, 10), 109)) +
+  xlab("Age") +
+  ylab("Central death rates") +
+  facet_grid(cols=vars(Gender))
+
+with(params,
+  (proto_plt2 %+%
+    (life_table |> 
+      filter(between(Year, year_p, year_e), 
+             Gender != 'Both', 
+             Age < 90))  +
+    ggtitle("Central death rates 1948-2013: Europe catches up"))) |>
+  plotly::ggplotly()
+
+```
+
+::: {.callout-note}
+
+The animated plot allows to spot more details. It is useful to use color so as to distinguish threee areas: USA; Northern Europe (NE) comprising England and Wales, the Netherlands, and Sweden; Southern Europe (SE) comprising Spain, Italy, and France. In 1948, NE and the USA exhibit comparable central death reates at all ages for the two genders, the USA looking like a more dangerous place for young adults. Spain lags behind, Italy and Frane showing up at intermediate positions.
+
+By year 1962, SE has almost caught up the USA. Italy and Spain still have higher infant mortality while central death rates in the USA and France are almost identical at all ages for both genders.
+Central death rates attain a minimum around 10-12 for both genders. In Spain the minium
+central death rate has been divided by almost ten between 1948 and 1962.
+
+If we dig further we observe that the shape of the male central death rates curve changes over time.
+In 1962, in the USA and France, central death rates exhibit a sharp increase between years 12 and 18,
+then remain almost constant between 20 and 30 and afterwards increase again. This pattern shows up in other countries but in a less spectacular way.
+
+Twenty years afterwards, during years 1980-1985, death rates at age 0 have decreased at around $1\%$
+in all countries while it was $7\%$ in Spain in 1948. The male central death curve exhibits a plateau between ages 20 and 30. Central death rates at this age look higher in France and the USA.
+
+By year 2000, France is back amongst European countries (at least with respect to central death rates). Young adult mortality rates are higher in the USA than in Europe. This phenomenon  became more pregnant during the last decade.
+
+:::
+
+Plot ratios between central death rates (`qx`) in European countries and
+central death rates in the USA in 1948.
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+
+simplified_life_table <- with(params, 
+                              life_table |>
+  dplyr::filter(between(Year, year_p, year_e), Age<90, Gender!="Both") |>
+  dplyr::select(Age, Year, Country, qx, Gender, Area))
+
+eur_table <- simplified_life_table |>
+  dplyr::filter(Country!='USA')
+
+us_table <- simplified_life_table |>
+  dplyr::filter(Country=='USA') |>
+  dplyr::select(-Area, -Country)
+
+eur_us_table <-  eur_table |>
+  dplyr::inner_join(us_table, by=c('Age', 'Year', 'Gender')) |>
+  dplyr::mutate(Ratio=qx.x/qx.y)
+```
+
+```{r}
+with(params,
+(eur_us_table  |>
+  ggplot(aes(x=Age,
+             y=Ratio,
+             col=Area,
+             frame=Year,
+             linetype=Country)) +
+  scale_y_log10() +
+  scale_x_continuous(breaks = c(seq(0, 100, 10), 109)) +
+  geom_point(size=.1) +
+  geom_smooth(method="loess", se=FALSE, span=.1, size=.1) +
+  ylab("Ratio of mortality quotients with respect to US") +
+  labs(linetype="Country", color="Area") +
+  # scale_colour_brewer(direction=-1) +
+  ggtitle(label = stringr::str_c("European countries with respect to US,", year_p,'-', year_e, sep = " "), subtitle = "Sweden consistently ahead") +
+  facet_grid(rows = vars(Gender)))) |>
+  ggplotly()
+
+```
+
+- [x] Comment. This animation reveals less than the preceding one since we just have ratios
+with respect to the USA. But the patterns followed by European societies emerge in a more transparent way.
+The divide between northern and southern Europe at the onset of the period is even more visible.
+The ratios are important across the continent: there is a factor of 10 between spanish and swedish
+infant mortality rates. But the ratios at ages 50 and above tend to be similar. By the early 60s, the
+gap between southern and northern Europe has shrinked. By now, the ratios between central death rates
+tend to be within a factor of 2 across all ages, and even less at ages 50 and above.
+
+# Death rates evolution since WW II
+
+- [x] Plot mortality quotients (column `mx`) for
+both genders as a function of `Age` for  years `1946, 1956, ...` up to `2016` .
+Use aesthetics to distinguish years. You will need to categorize  the `Year`  column
+(`forcats::` may be helpful).
+
+1. Facet by `Gender`  and `Country`
+1. Pay attention to axes labels, to legends. Assess logarithmic scales.
+
+```{r mx_1913_21_f, warning=FALSE, echo=FALSE}
+post_ww_II <- with(params, 
+  seq(year_p, year_e, 10)
+)
+
+p <- life_table |>
+  filter(FALSE) |>
+  ggplot(aes(x=Age,
+             y=qx,
+             col=forcats::as_factor(Year),
+             linetype=forcats::as_factor(Year))) +
+  geom_smooth(se=FALSE, method="loess", span= .1, size=.2) +
+  labs(colour="Year", linetype="Year")   +
+  scale_y_log10() +
+  facet_grid(rows=vars(Country), cols=vars(Gender))
+
+(p  %+%
+  (life_table |> dplyr::filter(Year %in% post_ww_II, Gender!="Both",
+                                Age < 90,
+                                Country %in% c('Spain', 'USA'))) +
+  ggtitle(stringr::str_c("Mortality quotient per Age", sep=", "),
+          subtitle = "Post WW II")) |>
+  ggplotly()
+```
+
+
+
+- [x] Write a function `ratio_mortality_rates` with signature
+`function(df, reference_year=1946, target_years=seq(1946, 2016, 10))`
+that takes as input:
+
+- a dataframe with the same schema as `life_table`,
+- a reference year `ref_year` and
+- a sequence of years `target_years`
+
+and that returns a dataframe with schema:
+
+
+| Column Name | Column Type |
+|:------------|:------------|
+|  Year       | integer     |
+|  Age        | integer     |
+|  mx         | double      |
+|  mx.ref_year| double      |
+|  Country    | factor      |
+|  Gender     | factor      |
+
+where `(Country, Year, Age, Gender)` serves as a _primary key_,
+`mx` denotes the central death rate at `Age` for `Year` and `Gender` in `Country`
+whereas `mx_ref_year` denotes central death rate at `Age` for argument `reference_year`
+in `Country` for `Gender`.
+
+
+```{r ratio_mortality_rates}
+ratio_mortality_rates <- function(df,
+                                  reference_year=1946,
+                                  target_years=seq(1946, 2016, 10)){
+  dplyr::filter(df, Year %in% target_years, Age <90) |>
+  dplyr::select("Age", "Area", "Gender", "Country", "qx", "Year") |>
+  dplyr::inner_join(y=df[df$Year==reference_year,
+                         c("Age", "Gender", "Country", "qx")],
+                    by=c("Age", "Gender", "Country"))
+}
+```
+
+
+- [x] Draw plots displaying the ratio  $m_{x,t}/m_{x, 1946}$ for ages $x \in 1, \ldots, 90$
+and year $t$ for $t \in 1946, \ldots, 2016$ where $m_{x,t}$ is the central death rate
+at age $x$ during year  $t$.
+
+1. Handle both genders and countries `Spain`, `Italy`, `France`, `England & Wales`, `USA`, `Sweden`, `Netherlands`.
+1. One properly facetted plot is enough.
+
+```{r com_ratio_mortality_rates, echo=FALSE}
+df_ratios <- ratio_mortality_rates(filter(life_table,
+                                          Gender!="Both"),
+                                   reference_year=1948,
+                                   target_years=seq(1948, 2013, 1))
+```
+
+
+
+```{r full_comparison_template, echo=FALSE}
+q <- df_ratios |>
+  dplyr::filter(FALSE) |>
+  ggplot(aes(x=Age,
+             y=qx.x/qx.y,
+             linetype=forcats::as_factor(Year),
+             col=forcats::as_factor(Year))) +
+  geom_smooth(method="loess",
+              se= FALSE,
+              size =.2,
+              span= .1) +
+  scale_y_log10() +
+  ylab("Ratio of mortality rates, reference Year 1946") +
+  labs(linetype="Year", col="Year") +
+  scale_colour_brewer()
+```
+
+```{r frame_full_comparison, message=FALSE, warning=FALSE, echo=FALSE}
+qf <- df_ratios |>
+#  dplyr::filter(FALSE) |>
+  ggplot(aes(x=Age,
+             y=qx.x/qx.y,
+             linetype=Country,
+             frame=Year,
+             col=Area)) +
+  geom_smooth(method="loess",
+              se= FALSE,
+              size =.2,
+              span= .1) +
+  scale_y_log10() +
+  scale_x_continuous(breaks = c(seq(0, 100, 10), 109)) +
+  ylab("Ratio of mortality rates, reference Year 1946") +
+  labs(linetype="Country") +
+  facet_grid(rows=vars(Gender))
+```
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+qf |> ggplotly()
+```
+
+
+```{r  full_comparison, message=FALSE, warning=FALSE, echo=FALSE}
+with(params, 
+     q %+%
+  dplyr::filter(df_ratios, 0 == (Year - year_p) %% 15) +
+  ggtitle("Full comparison") +
+  facet_grid(cols=vars(Gender), rows=vars(Country)))
+```
+
+- [x] Comment. During the last seventy years, death rates decreased at all ages in all seven countries.
+This progress has not been uniform across ages, genders and countries. Across most countries, infant mortality
+dramatically improved during the first post-war decade  while death rates at age 50 and above remained stable
+until the mid seventies.
+
+# Trends
+
+We noticed that central death rates did not evolve in the same way across all ages: first, the decay has been much more significant at low ages; second, the decay of central death rates at old ages (above 60) mostly took place  during the last four decades. It is worth digging separately at what happened for different parts of life.
+
+- [x] Plot mortality quotients at ages $0, 1, 5$  as a function of time. Facet by Gender and Country
+
+```{r infant_mort_rate, echo=FALSE, warning=FALSE, message=FALSE}
+ages <- c(0, 1, 5)
+
+p_children <- filter(life_table, FALSE) |>
+  ggplot(mapping=aes(x=Year, y=qx,
+                     linetype=forcats::as_factor(Age),
+                     shape=forcats::as_factor(Age),
+                     col=forcats::as_factor(Age))) +
+  geom_line(size=.2) +
+  labs(linetype="Age", col="Age", shape="Age") +
+  scale_y_log10() +
+  scale_x_continuous(breaks=seq(1935,2010,5)) +
+  facet_grid(cols=vars(Gender), rows=vars(Country))
+
+p_children %+%
+  filter(life_table,
+            Age %in% ages,
+            Gender != "Both",
+            Year %in% 1933:2013) +
+  ggtitle("Infant and child, mortality rate",
+            subtitle = "Hygiene, Vaccination, Antibiotics")
+```
+
+- [x] Comment. All European countries achieved the same infant mortality rates after year 2000. The USA now lag behind.
+
+During years 1940-1945, in the Netherlands and France, gains obtained before 1940 were reversed. Year 1945
+was particularly difficult in the Netherlands.
+
+- [x] Plot mortality quotients at ages $15, 20, 40, 60$  as a function of time. Facet by `Gender` and `Country`
+
+```{r adult_mortality_rates}
+ages <- c(15, 20, 40, 60)
+
+p_children %+%
+  filter(life_table,
+         Age %in% ages,
+         Gender != "Both",
+         Year %in% 1933:2013) +
+  ggtitle("Mortality rate at different ages")
+```
+
+- [x] Comment. While death rates at ages 15 and 20 among women are close across all societies,  death
+rates are higher at age 20 than at age 15 among men. In France, at age 20, death rates declined from 1945
+until 1960, and then increased back to their initial level until 1980. Male death rates at age 60 started
+to decline around 1980. Female death rates at age 60 declined steadily throughout the 7 decades.
+Years 1940-1945 exhibit disruptions with different shapes and intensities in  Italy, France, England & Wales, and the Netherlands.
+
+# Rearrangement
+
+- [x] From dataframe `life_table`, compute another dataframe  called `life_table_pivot`
+with primary key `Country`, `Gender` and `Year`, with a column for each `Age` from `0` up to `110`.
+For each age column, the entry should be the central death rate
+at the age defined by column, for `Country`, `Gender`  and `Year` identifying the row.
+
+You may use functions `pivot_wider`, `pivot_longer` from `tidyr::` package.
+
+The resulting schema should look like:
+
+| Column Name | Type    |
+|:------------|:--------|
+| Country     | factor  |
+| Gender      | factor  |
+| Year        | integer |
+| `0`         | double  |
+| `1`         | double  |
+| `2`         | double  |
+| `3`         | double  |
+| $\vdots$    | $\vdots$|
+
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+life_table |>
+  dplyr::select(Country, Gender, Year, Age, qx) |>
+  tidyr::pivot_wider(names_from = "Age",
+                     values_from = "qx") ->  life_table_pivot
+```
+
+- [x] Using `life_table_pivot` compute life expectancy at birth for each Country, Gender and Year
+
+```{r, echo=FALSE}
+life_table_pivot |>
+  dplyr::select(-c(Country, Gender, Year)) |>
+  as.matrix() -> tmp
+
+apply(1- tmp,
+      MARGIN = 1,
+      FUN = function(x) {sum(cumprod(x))}) -> lex
+
+rm(tmp)
+
+tibble::add_column(life_table_pivot, lex=round(lex, 2)) |>
+  dplyr::select(Country, Year, Gender, lex) -> lex_table
+
+rm(lex)
+```
+
+
+# PCA  and SVD over log-mortality tables
+
+```{r  argspca, echo=FALSE}
+args_pca <- list(
+  Country="Netherlands",
+  Gender="Female", 
+  Start_Year=1948, 
+  End_Year=2013
+)
+```
+
+- [x] facet screeplots for gender and countries
+- [x] comment the screeplots
+- [ ] comment the correlation circles
+- [ ] comment the biplots
+
+In the next chunks we compute the PCA (with standardization and centering) for all Countries and
+Genders in the database. The `dplyr` pipeline prepares grouped tibble corresponding
+to the different countries and genders. The collection is fed to  `group_map`
+which attempts to compute pca for each group. This output is
+a list of (key, value) pairs.
+
+Henceforth,  we exclude data from Sweden since for several years after $2000$, 
+mortality risks at some ages between $5$ and $10$ are zero. I do not know 
+how reliable this information is. It might just be the outcome of random fluctuations: 
+a modern Swedish generation typically comprises $110000$ children. Data 
+obtained from larger (and possibly less healthy) European countries suggest 
+that mortality risks between ages $5$ and $10$ are less than $5\times 10^{-5}$. 
+This suggests that the yearly number of girls or boys dying ate age $x$ 
+between $5$ and $10$ in Sweeden is dominated by a Poisson distribution with parameter $3$.
+The probability of outcome $0$ under Poisson distribution with parameter $3$ is approximately `r round(exp(-3),2)`.
+
+
+```{r wide_grouped_lt, message=FALSE, warning=FALSE, include=FALSE}
+wide_grouped_life_table <- function(life_table,
+                                    genders = c("Male", "Female"),
+                                    lim_age = c(0, 89),
+                                    lim_year = c(1948, 2013)) {
+  life_table |>
+    dplyr::filter(Country != 'Sweden',
+                  Gender %in% genders,
+                  between(Year, lim_year[1], lim_year[2]),
+                  between(Age, lim_age[1], lim_age[2])) |> 
+    dplyr::select(Country, Gender, Year, Age, qx) |>
+    dplyr::mutate(lqx = log(qx)) |>
+    dplyr::select(-qx) |>
+    tidyr::pivot_wider(names_from = Age, values_from = lqx) |>
+    dplyr::group_by(Country, Gender)
+}
+```
+
+```{r helper_pca, warning=FALSE, message=FALSE}
+wg_lt <- wide_grouped_life_table(life_table)
+
+group_pca <- function(df, scale_or_not=TRUE){
+  df |>
+    tibble::column_to_rownames("Year") |>
+    dudi.pca(scannf = FALSE, nf=5, center = TRUE, scale = scale_or_not) 
+}
+
+pcas_by_country_gender <- dplyr::group_map(wg_lt, 
+                 .f = ~ list(key=.y , value=try(group_pca(.x, TRUE)))) 
+
+pcas_by_country_gender_ns <- dplyr::group_map(wg_lt, 
+                 .f = ~ list(key=.y , value=try(group_pca(.x, FALSE)))) 
+```
+
+
+
+
+```{r fromWang, echo=FALSE}
+# http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_(ggplot2)/
+
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL, byrow=FALSE) {
+  library(grid)
+
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+
+  numPlots = length(plots)
+
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                    ncol = cols, nrow = ceiling(numPlots/cols), byrow=byrow)
+  }
+
+ if (numPlots==1) {
+    print(plots[[1]])
+
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
+}
+
+```
+
+## Screeplots
+
+The screeplots for standardized-centered PCAs for countries and genders shows
+
+- the inertia projected on the first two principal components accounts for no less than $90\%$ of total inertia.
+- for each country the inertia projected on the first two principal components is larger for Females than for Males
+- The approximation by rank two matrices is worst for the Dutch matrices
+
+
+
+
+```{r df_screeplots, echo=FALSE}
+buid_stack_screeplots <- function(list_pcas){
+cbind(
+  purrr::map_df(list_pcas, 
+                ~ '[['(., 'key')), 
+                (purrr::map(list_pcas, 
+                            ~ .[['value']][['eig']][1:5]) |>
+                 do.call(rbind, .) |> 
+                 data.frame())
+  ) |> 
+ tidyr::pivot_longer(cols = starts_with("X"), 
+                     names_to="Component", 
+                     values_to = "Magnitude")
+}
+
+df_screeplots <- buid_stack_screeplots(pcas_by_country_gender)
+df_screeplots_ns <- buid_stack_screeplots(pcas_by_country_gender_ns)
+```
+
+```{r screeplots, fig.cap=""}
+dplyr::group_by(df_screeplots, Gender) |> 
+  dplyr::group_map(.f = ~ (layout(plot_ly(data = .x, 
+                                  x = ~Component, 
+                                  y = ~Magnitude, 
+                                  type = 'bar', 
+                                  color = ~ Country) ,
+                                   yaxis = list(title = 'Eigenvalue'), 
+                                   barmode = 'group')
+                           )
+                   ) |> subplot(shareY = TRUE)  |> 
+  layout(title = "Screeplots with standardization", 
+         annotations = list(
+ list(x = 0.2 , y = 1.05, text = "Females", showarrow = F, xref='paper', yref='paper'),
+  list(x = 0.8 , y = 1.05, text = "Males", showarrow = F, xref='paper', yref='paper'))
+)
+
+```
+
+
+
+```{r screeplots_ns, fig.cap=""}
+dplyr::group_by(df_screeplots_ns, Gender) |> 
+  dplyr::group_map(.f = ~ (layout(plot_ly(data = .x, 
+                                  x = ~Component, 
+                                  y = ~Magnitude, 
+                                  type = 'bar', 
+                                  color = ~ Country) ,
+                                   yaxis = list(title = 'Eigenvalue'), 
+                                   barmode = 'group')
+                           )
+                   ) |> subplot(shareY = TRUE)  |> 
+  layout(title = "Screeplots without standardization", 
+         annotations = list(
+ list(x = 0.2 , y = 1.05, text = "Females", showarrow = F, xref='paper', yref='paper'),
+  list(x = 0.8 , y = 1.05, text = "Males", showarrow = F, xref='paper', yref='paper'))
+)
+
+```
+
+The stacked screeplots obtained from centred but non-standardized arrays tell a different (but 
+obviously related) story. Recall that the total inertia of the six different arrays are different. 
+But for all six countries and two genders, most of the inertia is captured by the first two axes. 
+
+
+```{r}
+df_screeplots_ns |> 
+  dplyr::group_by(Country, Gender) |> 
+  dplyr::summarise(Inertia = round(sum(Magnitude),2))
+```
+
+```{r}
+tb_screeplots_ns <- dbplyr::memdb_frame(df_screeplots_ns)
+
+dplyr::copy_to(src, tb_screeplots_ns)
+scree_win1 <- dbplyr::win_over(
+  expr = sql("sum(Magnitude)"),
+  frame = c(-Inf, 0),
+  partition = c("Country", "Gender"),
+  order = "Component",
+  con = con
+)
+
+scree_win2 <- dbplyr::win_over(
+  expr = sql("100*Magnitude/max(cumInertia)"),
+  frame = c(-Inf, Inf),
+  partition = c("Country", "Gender"),
+  order = "Component",
+  con = con
+)
+```
+
+```{r}
+tb_screeplots_ns |> 
+  dplyr::mutate(cumInertia=scree_win1) |> 
+  dplyr::mutate(shareInertia=scree_win2) |> 
+  as.data.frame() -> df_screeplots_ns2
+
+df_screeplots_ns2
+```
+
+
+
+
+```{r}
+dplyr::group_by(df_screeplots_ns2, Gender) |> 
+  dplyr::group_map(.f = ~ (layout(plot_ly(data = .x, 
+                                  x = ~Component, 
+                                  y = ~shareInertia, 
+                                  type = 'bar', 
+                                  color = ~ Country) ,
+                                   yaxis = list(title = 'Share of inertia'), 
+                                   barmode = 'group')
+                           )
+                   ) |> subplot(shareY = TRUE)  |> 
+  layout(title = "Screeplots without standardization", 
+         annotations = list(
+ list(x = 0.2 , y = 1.05, text = "Females", showarrow = F, xref='paper', yref='paper'),
+  list(x = 0.8 , y = 1.05, text = "Males", showarrow = F, xref='paper', yref='paper'))
+)
+```
+
+Screeplots from PCA without standardization tell us in advance how well Lee-Carter 
+approximation will perform for a given population.  The larger the share of 
+inertia carried by the first component, the better the Lee-Carter approximation. 
+From the figure above, we can infer that Lee-Carter approximation will be better 
+for Female populations and than for Male populations. 
+
+## Correlation circles 
+
+For a given PCA, the correlation circle tells us  how close the different variables are from the plane spanned by the first two components 
+and where the projection of the variables lay on this plan. This can be the basis  of  some variables clustering procedures. 
+
+
+
+The correlation circle delivered by `ade4` is not readable:
+  - all variables are aligned with the first component as could have been predicted from the screeplot
+  - labels overlapping hides a possible structure
+
+
+```{r multicocircle, warning=FALSE}
+pcas_by_country_gender |>
+  purrr::map( ~ add_column(.[['value']][['co']], Age=0:89)) -> list_df_co_circles
+
+list_df_co_circles[[4]] -> datum
+```
+
+
+
+
+```{r, echo=FALSE}
+ggcocircle <- function(datum) {
+    ggplot(datum, aes(
+               x=Comp1,
+               y= Comp2,
+               color=forcats::as_factor(Age %/% 20),
+               shape=forcats::as_factor(Age %/% 20))) +
+    geom_point(size=1) +
+    stat_function(fun = ~ sqrt(1 -.x^2), color="black", linetype=3, alpha=.5) +
+    stat_function(fun = ~ - sqrt(1 -.x^2), color="black", linetype=3, alpha=.5) +
+    guides(color=FALSE, shape=FALSE) +
+    #labs(color="Age group", shape="Age group", ) +
+    geom_text(filter(datum, Age<20, Age>=0),
+              mapping=aes(x=Comp1, y=Comp2, label=Age),
+              show.legend=FALSE, hjust=-.75) +
+    xlim(-1.1, 1.1) +
+    ylim(-1.1, 1.1) +
+    xlab("") + ylab("") +
+    coord_fixed() 
+}
+```
+
+
+```{r}
+plot_ly(datum, 
+        x= ~Comp1, 
+        y= ~Comp2, 
+        symbol= ~forcats::as_factor(Age %/%15),
+        text = ~ paste("Age: ", Age),
+        hoverinfo = 'text', 
+        color = ~Comp1^2 + Comp2^2,
+        mode= 'markers'
+        ) |> 
+  layout(title = "Correlation circle with standardization", 
+         annotations = list(
+ list(x = 0.2 , y = 1.05, text = "Females", showarrow = F, xref='paper', yref='paper')
+ #,
+#  list(x = 0.8 , y = 1.05, text = "Males", showarrow = F, xref='paper', yref='paper')
+ ))
+  
+```
+
+
+
+
+
+```{r}
+
+fun_co_circle <- function(df){
+  plot_ly(data= df, 
+        x= ~Comp1, 
+        y= ~Comp2, 
+        symbol= ~forcats::as_factor(Age %/%15),
+        text = ~paste("Age: ", Age),
+        hoverinfo = 'text', 
+        color = ~Comp1^2 + Comp2^2,
+        mode= 'markers',
+        type='scatter',
+        showlegend=FALSE)
+}
+
+
+purrr::map(list_df_co_circles, fun_co_circle) -> list_circo_plots
+```
+
+```{r mother_of_cocircles}
+subplot(list_circo_plots, nrows = 6, shareX = TRUE, shareY = TRUE) |> 
+  layout(title = "Correlation circles with standardization", 
+         annotations = list(
+  list(x = 0.2 , y = 1.05, text = "Female", showarrow = F, xref='paper', yref='paper'),
+  list(x = 0.8 , y = 1.05, text = "Male", showarrow = F, xref='paper', yref='paper'))
+)
+```
+
+
+
+```{r}
+cocircles_annotations <- list_df_co_circles |> 
+  purrr::map()
+```
+
+```{r}
+plot_ly(list_df_co_circles[[12]], 
+        x= ~Comp1, 
+        y= ~Comp2, 
+        symbol= ~forcats::as_factor(Age %/%15),
+        text = ~paste("Age: ", Age),
+        hoverinfo = 'text', 
+        color = ~Comp1^2 + Comp2^2,
+        mode= 'markers') 
+        
+```
+
+
+
+
+Plotting the correlation circle is just making another scatter plot. Indeed,  attribute `co` of the
+object returned by `dudi.pca` is a data frame which rows correspond to the variables of the original
+data frame (so to ages).
+
+```{r}
+list_df_co_circles[[3]] -> data
+
+ggplotly(
+data |>
+  ggplot(aes(x=Comp1, 
+             y= Comp2, 
+             color=forcats::as_factor(Age %/% 20), shape=forcats::as_factor(Age %/% 20))) +
+  geom_point(size=1) +
+  labs(color="Age group", shape="Age group") +
+  geom_text(filter(data, Age<20, Age>=0), 
+            mapping=aes(x=Comp1, y=Comp2, label=Age), 
+            show.legend=FALSE, 
+            hjust=-.75) +
+  ggtitle("Correlation circle") +
+  xlim(-1.1, 1.1) +
+  ylim(-1.1, 1.1) +
+  coord_fixed() +
+  theme_light() )
+```
+
+
+For UK, France and Italy,  as could have been guessed from screeplots, all centered and standardized
+variables are highly correlated with the first component. This is even more striking for women than for men.
+For the Netherlands, Spain and the US, especially for men, variables  associated with old ages
+are substantially correlated with the second component.
+
+A common pattern emerges across countries and genders. Recall that PCA (and SVD) are uniquely defined
+up to signs of eigenvectors (singular vectors). The following description is taken from the correlation circle
+for women in France.
+
+- Age groups `60-79` and `80-99` are packed in the same region.  The two age groups are almost aligned
+along parallel curves and  ranked according to age along each curve. The two curves look
+oriented into opposite directions
+- Age group `40-59` is also packed in a small region and almost ordered along the second component
+- Age group `20-39` forms a SE-NW oriented cloud,  points are ordered according to ages
+- Age group `0-19` spans the whole plot. Ages 0-7  are ordered around the second component. Ages `8-15` tend to cluster in the same region. Age `18` almost look like an outlier. Ages  `16-17`  are at an intermediate position between the outlier `18` and the `10-15` group.
+
+
+Looking at the variables on the plane generated by the second and third principal components is also interesting.
+
+- Ages below 20 lie around a SW-NE axis
+- Ages between 20 and 40 lie on the south-west
+- Ages between 40 and 60 are clustered and almost aligned on the sout-east
+- Ages above 60 are almost aligned along a line
+- Ages above 80 are almost aligned along another line on the north east quarter
+
+
+```{r}
+list_df_co_circles[[3]] |>
+  dplyr::mutate(Age = forcats::as_factor(Age %/% 20)) |>
+  dplyr::mutate(Age = dplyr::recode(.[['Age']] ,`0`="0-19 years",
+                                `1`="20-39 years",
+                                `2`="40-59 years",
+                                `3`="60-79 years",
+                                `4`="80-99 years")) |>
+plot_ly(x=~Comp1,
+        y=~Comp2,
+        type = "scatter",
+        color=~Age)
+
+```
+
+
+```{r compute_list_lis, echo=FALSE}
+pcas_by_country_gender |>
+  purrr::map( ~ add_column(.[['value']][['li']], Year=year_p:year_e)) -> list_df_li
+```
+
+```{r gglicircle, echo=FALSE, eval=TRUE}
+gglicircle <- function(datum) {
+    ggplot(datum, aes(
+               x=Axis1,
+               y= Axis2,
+               color=Year,
+               shape=forcats::as_factor((Year-1948) %/% 15))) +
+    geom_point(size=1) +
+    guides(color=FALSE, shape=FALSE) +
+    xlim(-20, 20) +
+    ylim(-10, 10) +
+    geom_text(filter(datum, Year>=1948, Year<1963),
+               mapping=aes(x=Axis1, y=Axis2, label=Year),
+               show.legend=FALSE, vjust=-.75) +
+    theme_light()
+}
+```
+
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+multiplot(plotlist=(list_df_li |>
+                      purrr::map(gglicircle)), cols = 2, byrow = TRUE)
+```
+
+If we plot the rows (years) on the plane spanned by the first two principal axes, patterns across
+genders and countries again look very similar. Axis 1 roughly corresponds to a time axis. If we look
+at points corresponding to the first 15 years, plots for European countries are very much alike.
+For Female plots, the four points corresponding to years 1948-1951 follow the same paths in all
+six European countries; for the US the path is different. For England and Wales, France and Italy,
+the projections on the planed spanned by the first two principal axes look strikingly similar.
+
+
+Performing PCA without centering and normalizzation is disappointing. The first principal component catches almost all the inertia.
+
+
+```{r, warning=FALSE, message=FALSE}
+# multiplot(plotlist = list_screeplots_ns, cols = 2, byrow = TRUE)
+```
+
+## Assessing quality of reconstruction through truncated SVD
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE, eval=FALSE}
+lt |>
+  dplyr::filter(Year %in% 1948:2013, Gender != 'Both', Country != 'Sweden') |>
+  dplyr::select(Country, Gender, Year, qx) |>
+  dplyr::mutate(qx =log(qx)) |>
+  dplyr::group_by(Country, Gender) |>
+  dplyr::summarise(aqx = mean(qx), stdqx = sd(qx)) -> means_log_qx
+```
+
+
+
+
+```{r, echo=FALSE, eval=FALSE}
+group_svd<- function(df){
+  df |>
+    tibble::column_to_rownames("Year") |>
+    scale(center = TRUE, scale=FALSE) |>
+    svd(nu = 2, nv=2) 
+  }
+
+life_table |>
+    dplyr::filter(Gender != 'Both', Year>= year_p, Year<=year_e, Age <90, Country != 'Sweden') |>
+    dplyr::select(Country, Gender, Year, Age, qx) |>
+    dplyr::mutate(lqx = log(qx)) |>
+    dplyr::select(-qx) |>
+    tidyr::pivot_wider(names_from = Age, values_from = lqx) |>
+    dplyr::group_by(Country, Gender) |>
+    dplyr::group_map(.f = ~ list(key=.y , value=try(group_svd(.x)))) -> svd_by_country_gender
+
+```
+
+
+
+```{r, echo=FALSE, eval=FALSE}
+life_table |>
+    dplyr::filter(Gender != 'Both', Year>= year_p, Year<=year_e, Age <100) |>
+    dplyr::select(Country, Gender, Year, Age, qx) |>
+    dplyr::mutate(lqx = log10(qx)) |>
+    dplyr::select(-qx) |>
+    tidyr::pivot_wider(names_from = Age, values_from = lqx) |>
+    dplyr::filter(Gender == 'Male', Country == 'England & Wales') |>
+    dplyr::select(- Gender, - Country) |>
+    tibble::column_to_rownames(var = 'Year') -> EnWales
+```
+
+
+
+
+
+
+
+
+```{r, echo=FALSE, eval=FALSE, results='hide'}
+yy <- scale(EnWales, center = TRUE, scale = TRUE)
+xx <- svd(yy, nu = 2, nv=2)
+zz <- (xx$u %*% diag(xx$d[1:2]) %*% t(xx$v))
+sum((yy - zz)^2)
+```
+
+```{r, results='hide', echo=FALSE, eval=FALSE}
+(cumsum(xx$d^2)/(sum(xx$d^2)))[1:10]
+(sum(xx$d^2))
+dim(yy)
+```
+
+
+```{r, echo=FALSE, eval=FALSE}
+purrr::map(scale(EnWales)^2, sum)
+norm(scale(EnWales), "F")
+```
+
+```{r, echo=FALSE, eval=FALSE}
+rank_approximation <- function(df, rank.=2){
+  scaled_df <- scale(df, center = TRUE, scale = TRUE)
+  df_svd <- svd(scaled_df, nv = rank., nu =rank.)
+  mean_df <- apply(df, 2, mean)
+  if (scale.){
+    sd_df <- apply(df, 2, sd)  
+  } else {
+    sd_df <- rep(1, ncol(df))
+  }
+  approx_df <- (df_svd$u %*% diag(df_svd$d[1:rank.]) %*% t(df_svd$v)) %*% diag(sd_df) +
+    matrix(mean_df, nrow= nrow(df), ncol=ncol(df), byrow = TRUE)
+}
+```
+
+```{r, echo=FALSE, eval=FALSE}
+EnWales_2 <- rank_approximation(EnWales, 2)
+```
+
+```{r, eval=FALSE, echo=FALSE}
+# dim(EnWales_2)
+sum((scale(EnWales, TRUE, TRUE) - EnWales_2)^2)/sum(scale(EnWales, TRUE, TRUE)^2)
+qplot(x=1:100, y=EnWales_2[66,]) +
+  geom_line() 
+>>>>>>> ca46ad21d5b5d71bd8dc4f58e924101a45228507
+```
+
+
+
+# Canonical Correlation Analysis
+
+- [ ] Build a function that takes as input
+  + a dataframe like `life_table_pivot`,
+  + a couple  of countries, say `Spain` and `Sweeden`,
+  + a vector of `Year`, say `1948:1998`
+  + a `Gender` say `Female`
+  returns a matrix called $Z$ with rows corresponding to `Year` and columns
+  corresponding to couples `(Country, Age)`.
+
+```{r, echo=FALSE, eval=FALSE}
+life_table |>
+  dplyr::filter(Country %in% c("USA", "France"), Year %in% 1948:2013, Gender=='Female') |>
+  dplyr::select(Country, Year, Age, qx) |>
+  dplyr::mutate(qx = log(qx)) |>
+  tidyr::pivot_wider(id_cols=c(Year),
+                     names_from=c(Country, Age),
+                     values_from=c(qx)) -> truc
+```
+
+
+
+
+[R4Data Science Tidy](https://r4ds.had.co.nz/tidy-data.html#tidy-data-1)
+
+

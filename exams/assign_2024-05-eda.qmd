@@ -1,0 +1,170 @@
+---
+format:
+  html:
+    output-file: prep-est-2024.html
+  pdf:
+    output-file: prep-est-2024.pdf
+
+execute: 
+  eval: true
+  echo: false
+  collapse: true
+  
+  
+params:
+  truc: html
+  year: 2023 
+  curriculum: "M1 MIDS & MFA"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/isidata"
+  moodle: ""
+
+engine: knitr
+---
+
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+**Analyse Exploratoire: Préparation EST 2024-05-xx**
+
+- **`r glue::glue('{params$curriculum}')`** 
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- 2024-04-24  
+
+:::
+
+::: {#second-column}
+
+
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){style="float:right; size: 50px;"
+width="132"}
+
+
+:::
+
+:::
+
+# Factorisation QR
+
+::: {.callout-note}
+
+Soit $\mathbb{X} \in \mathcal{M}_{n,p}$. Si $\text{rang}(\mathbb{X}) =p$ alors il existe $\mathbb{Q} \in \mathcal{M}_{n,p}$ et $\mathbb{R} \in \mathcal{M}_{p,p}$ tels que $\mathbb{X} = \mathbb{Q} \times \mathbb{R}$ avec 
+$\mathbb{Q}^\top \times \mathbb{Q}= \text{Id}_p$ et $\mathbb{R}$ triangulaire supérieure. 
+
+Le couple $\mathbb{Q}, \mathbb{R}$ est appelé factorisaton QR de $\mathbb{X}$. 
+
+:::
+
+
+On se donne le _design_:
+$$\mathbb{X} = \left[\begin{array}{rr}
+  1 & 1 + \epsilon \\
+  1 & 1 - \epsilon \\
+  1 & 1 + \epsilon \\
+  1 & 1 - \epsilon
+\end{array}\right]$$
+avec $\epsilon \neq0$.
+
+1. Quelle est la factorisation `QR`  de $\mathbb{X}$ ?
+2. Quelle est la _Hat_ matrice associée au design $\mathbb{X}$ (matrice de projection orthogonale sur le SEV engendré par les colonnes de $\mathbb{X}$) ?
+1. Pour un design $\mathbb{X}$ de plein rang colonne ($p$), exprimer $(\mathbb{X}^\top \mathbb{X})^{-1}\mathbb{X}^\top$ à l'aide de la factorisation QR. 
+3. Si le vecteur réponse est $Y \in \mathbb{R}^4$, quel  est l'estimateur des moindres carrés ordinaires? (le minimisant de $\| Y - \mathbb{X}\theta\|_2^2$)
+
+
+
+# Normes matricielles
+
+::: {.callout-note}
+
+Une fonction $f$ de $\mathcal{M}_{n,p}$ dans $\mathbb{R}$ est une norme ssi 
+
+1. $\forall M \in \mathcal{M}_{n,p}, f(M) \geq 0$
+2. $f(\lambda M) = |\lambda|f(M), \forall M \in \mathcal{M}_{n,p}, \forall \lambda \in \mathcal{R}$ 
+3. $f(M + N) \leq f(M) + f(N), \forall M,N  \in \mathcal{M}_{n,p}$
+4. $f(M) = 0 \Leftrightarrow M =0$ 
+
+Dans la suite $\|.\|_{\text{HS}}$  et $\|.\|_{\text{op}}$ désignent respectivement les normes Hilbert-Schmidt et normes dites (abusivement) d'opérateur.
+:::
+
+
+1. Vérifier que si $\|.\|_i$ et $\|.\|_o$ désignent des normes sur $\mathbb{R}^n$ et $\mathbb{R}^p$ alors $f(M) = \sup_{x \in \mathbb{R}^p\setminus \{0\}} \|M x \|_o/\|x\|_i$ définit une norme sur $\mathcal{M}_{n,p}$. On dit que $f$ est la norme subordonnée à  $\|.\|_i$ et $\|.\|_o$
+5. Si $g$ est subordonnée à $\|.\|_o$ et $\|.\|_j$,  et $f$ subordonnée à $\|.\|_i$ et $\|.\|_o$, et $h$ la norme subordonnée j à $\|.\|_i$ et $\|.\|_j$,  est-il vrai que $h(X \times M) \leq g(X) \times f(M)$ ?
+2. $\|.\|_{\text{op}}$ est-elle une norme subordonné ? si oui à quoi ?
+3. Même question pour $\|.\|_{\text{HS}}$
+4. Les normes $\|.\|_{\text{HS}}$ vérifient-elles la propriété de sous-multiplicativité?
+5. Est-il vrai que $\|X\|_{\text{op}} \leq \|X\|_{\text{HS}} \leq max(n,p) \|X\|_{\text{op}}$?
+6. Existe-t-il des normes matricielles qui ne sont pas des normes subordonnées ?
+  
+
+
+::: {.content-visible when-profile='solution'} 
+ 
+ 
+:::
+
+
+# Matrices symétriques et décomposition spectrale
+
+$M$ désigne une matrice symétrique à $n$ lignes. 
+
+::: {.callout-note}
+
+$M$ admet une décomposition spectrale: 
+
+$$M = U \times \Lambda \times U^{\top}$$
+avec $U \times U^\top = \text{Id}$ et $\Lambda$ diagonale. Les vecteurs colonnes de $U$ sont appelés *vecteurs propres* de $M$ et les coefficients diagonaux de $\Lambda$ *valeurs propres* de $M$.
+ 
+:::
+
+1. Si les valeurs propres de $M$ valent $1$ ou $0$, $M$ est-elle une matrice de projection orthogonale ?
+2. Une matrice symétrique peut-elle avoir plusieurs décompositions spectrales ?
+3. Les valeurs propres d'une matrice symétriques sont elles toujours réelles? positives?
+4. La suite ordonnée des valeurs propres est-elle unique?
+5. Exprimer la trace et le déterminant de $M$ à l'aide des coefficients de $\Lambda$.
+6. Exprimer $M^k$ à l'aide de $U$ et $\Lambda$. 
+7. Quel est le lien entre la décomposition spectrale et la trace/le déterminant?
+8. Quelle est la décomposition spectrale de $\begin{pmatrix}\sigma_x^2 & \rho \sigma_x \sigma_y \\ \rho \sigma_x \sigma_y & \sigma_y^2\end{pmatrix}$ ?
+  
+
+  
+
+::: {.content-visible when-profile='solution'} 
+ 
+ 
+:::
+
+
+# Factorisation SVD
+
+::: {.callout-note}
+
+### Définition
+
+Une décomposition SVD de $X \in \mathcal{M}_{n,p}$ est une factorisation de la forme
+
+$$X = U \times D \times V^\top$$
+
+avec $U^\top \times U=\text{Id}_n$, $V^\top \times V=\text{Id}_p$, $D$ vérifiant
+$D_{i,j}=0$ si $i\neq j$, $D_{i,i}=0$ pour $i > \text{rang}(X)$, $D_{i,i}\geq D_{i+1, i+1}$.
+
+Les coefficients diagonaux de $D$ sont appelés valeurs singulières de $X$.
+Les vecteurs colonnes de $U$ (respectivement $V$) sont appelés vecteurs singuliers à gauche (respectivement à droite).  
+
+On notera les valeurs singulières non nulles de $s_1 \geq s_2 \geq \ldots \geq s_{r}$ ($r=\text{rang}(X)$).
+:::
+
+1. Si une matrice est symétrique, une décomposition spectrale est-elle toujours une factorisation SVD ?
+2. Donner une factorisation SVD de $\begin{pmatrix} 1 & 1+ \epsilon \\ 1 & 1- \epsilon\end{pmatrix}$.
+3. Relier la factorisation SVD de $X$ et la décompositoin spectrale de $X^\top X$. 
+4. Soit $O$ une matrice orthogonale à $n$ lignes et $n$ colonnes. Proposer plusieurs factorisations SVD.
+5. Si $X$ est une matrice carré, proposer une relation entre la valeur absolue du déterminant de $X$ et les valeurs singulières de $X$. 
+6. Exprimer la Hat matrice en fonction de la factorisation SVD.
+7. Exprimer la pseudo-inverse de Moore-Penrose à l'aide de la factorisation SVD. 
+8. La norme-$p$ de Schatten de $X$ est définie comme la norme $\ell_p$ du vecteur des valeurs singulières de $X$. S'agit-il d'une norme ?
+9. Une version des inégalités  Hoffmann-Wielandt  affirme que  $\| A -B \|^2_{\text{HS}} \geq \sum_{i=1}^{\min(n,p)} |s_i(A) - s_i(B)|^2$.  Vérifier pour les matrices symétriques (supposant $n=p$), puis pour le cas général.  
+
+
+

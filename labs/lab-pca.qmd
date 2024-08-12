@@ -1,0 +1,1048 @@
+---
+date: "`r Sys.time()`"
+
+execute:
+  echo: true
+  eval: true
+  collapse: true
+
+format:
+  html:
+    output-file: lab-pca.html
+  pdf:
+    output-file: lab-pca.pdf
+
+params:
+  truc: html
+  year: 2024 
+  curriculum: "M1 MIDS/MFA"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/eda"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=13227"
+  
+engine: knitr
+---
+
+```{r}
+#| label: setup-packages-foo
+#| message: false
+#| warning: false
+#| include: true
+
+stopifnot(
+  require(tidyverse),
+  require(patchwork),
+  require(httr),
+  require(glue),
+  require(broom)
+)
+
+old_theme <- theme_set(theme_minimal())
+```
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+
+- **`r stringr::str_glue('{params$curriculum}')`**
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- `r stringr::str_glue("[Course Homepage]({params$homepage})")`  
+- `r stringr::str_glue("[Moodle]({params$moodle})")`
+
+::: 
+
+::: {#second-column}
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
+:::
+
+:::
+
+
+```{r}
+#| label: setup
+#| warning: false
+#| message: false
+#| echo: false
+
+stopifnot(
+  require(tidyverse),
+  require(DT),
+  require(skimr),
+  require(GGally),
+  require(broom),
+  require(patchwork),
+  require(ggforce),
+  require(glue),
+  require(ggfortify),
+  require(magrittr),
+  require(tidymodels),
+#   require(ggvoronoi),
+  require(ggforce)
+)
+
+tidymodels::tidymodels_prefer(quiet = TRUE)
+
+old_theme <-theme_set(theme_minimal(base_size=9, base_family = "Helvetica"))
+```
+
+<!-- [tidyverse conflicts](https://tidyverse.tidyverse.org/reference/tidyverse_conflicts.html) -->
+
+```{r}
+#| echo: false
+#| eval: false
+#| 
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  comment=NA,
+  prompt=FALSE,
+  cache=FALSE,
+  echo=TRUE,
+  results='asis'
+)
+```
+
+```{r}
+#| echo: false
+#| eval: true
+#|
+source(file = "../_UTILS/make_biotiful.R")
+```
+
+
+Swiss fertility data
+====================
+
+Dataset  `swiss`  from `datasets::swiss` connect [fertility](https://en.wikipedia.org/wiki/Total_fertility_rate) and
+social, economic data within 47 French-speaking districts in [Switzerland](https://en.wikipedia.org/wiki/Switzerland).
+
+-   `Fertility` : fertility index
+-   `Agriculture` : jobs in agricultural sector
+-   `Examination` : literacy index (military examination)
+-   `Education` : proportion of people with successful secondary education
+-   `Catholic` : proportion of Catholics
+-   `Infant.Mortality` : mortality quotient at age 0
+
+Fertility index (`Fertility`) is considered as the *response variable*
+
+The social and economic variables are *covariates* (*explanatory* variables).
+
+See [European Fertility Project](https://pop.princeton.edu/european-fertility-project#:-:text=switzerland) for more on this dataset.
+
+![](./IMG/Karte_Bezirke_der_Schweiz_farbig_2018.png)
+
+
+PCA (Principal Component Analysis) is concerned with covariates.
+
+```{r}
+#| results: markup
+data("swiss")
+
+swiss %>% 
+  glimpse(50)
+```
+
+Have a look at the documentation of the dataset
+```{r}
+#| include: false
+?swiss
+```
+
+# Describe the dataset
+
+- Compute summary for each variable
+
+::: {.content-visible when-profile="solution"} 
+
+::: {.callout-tip title="solution"} 
+
+It is enough to call `summary()` on each column of `swiss`. 
+This can be done in a functional programming style using package `purrr`. 
+The collections of summaries can be rearranged so as to build a dataframe that is 
+fit for reporting.  
+
+
+
+```{r}
+tt <- map_dfr(swiss, summary, .id = "var") %>% 
+  mutate(across(where(is.numeric), ~ round(.x, digits=1))) 
+```
+
+::: {.content-visible when-format="html"}
+```{r} 
+#| eval: !expr knitr::is_html_output()
+tt %>% 
+  DT::datatable()
+```
+:::
+
+::: {.content-visible when-format="pdf"}
+```{r}
+#| eval: !expr knitr::is_latex_output()
+tt %>% 
+  knitr::kable()
+```
+:::
+
+Function `skim` from `skimr`  delivers all univariate summaries in proper form. 
+
+```{r}
+foo <- swiss %>% 
+  select(-Fertility) %>% 
+  skim()  
+```
+
+```{r}
+foobar <- foo %>%  
+  filter(skim_type=="numeric") %>% 
+  rename(variable=skim_variable)  %>% 
+    mutate(across(where(is.numeric), ~ round(.x, digits=1))) 
+```
+
+::: {.content-visible when-format="html"}
+
+```{r}
+#| eval: !expr knitr::is_html_output()
+foobar %>% 
+  DT::datatable(extensions = c('Buttons', 'ColReorder', 'FixedColumns', 'Responsive'),
+                options = list( dom = 'Bfrtip',
+                buttons = c('csv', 'pdf', 'print'),
+                colReorder = TRUE, 
+                dom = 't',
+                scrollX = TRUE,
+                fixedColumns = list(leftColumns = 3, rightColumns = 1))
+  ) 
+```
+
+:::
+
+::: {.content-visible when-format="pdf"}
+```{r}
+#| eval: !expr knitr::is_latex_output()
+foobar %>% 
+  knitr::kable()
+```
+:::
+
+:::
+:::
+
+
+- Display graphic summary for each variable.
+
+::: {.content-visible when-profile="solution"} 
+
+::::: {.callout-tip title="solution"} 
+
+We have to pick some graphical summary of the data. Boxplots and violine plots could be used if we look for concision.
+
+We use histograms to get more details about each column. 
+
+Not that covariates have different meanings:  `Agriculture`, `Catholic`, `Examination`, and `Education` are percentages with values between $0$ and $100$.  
+
+We have no details about the standardized fertility index `Fertility`
+
+`Infant.Mortality` is also a rate:  
+
+> Infant mortality is the death of an infant before his or her first birthday. The infant mortality rate is the number of infant deaths for every 1,000 live births. In addition to giving us key information about maternal and infant health, the infant mortality rate is an important marker of the overall health of a society.
+
+see [Center for Desease Control](https://www.cdc.gov/reproductivehealth/maternalinfanthealth/infantmortality.htm)
+
+We reuse the function we have already developped during previous sessions.
+
+```{r}
+make_biotifoul(swiss, .f = is.numeric)
+```
+
+Histograms reveal that our covariates have very different distributions. 
+
+Religious affiliation (`Catholic`) tells us that there two types of districts, which is  reminiscent of the old principle *Cujus regio, ejus religio* , see [Old Swiss Confederacy](https://en.wikipedia.org/wiki/Old_Swiss_Confederacy). 
+
+`Agriculture` shows that in most districts, agriculture was still a very important activity.
+
+`Education` reveals that in all but a few districts, most children did not receive secondary education. `Examination` shows that some districts lag behind the bulk of districts. Even less exhibit a superior performance.
+
+The two demographic variables `Fertility`  and `Infant.Mortality` look roughly unimodal with a few extreme districts.
+
+
+
+:::::
+
+:::
+
+# Investigate correlations
+
+Compute, display and comment the sample correlation matrix.
+
+Display jointplots for each pair of variables.
+
+::: {.content-visible when-profile="solution"} 
+
+::::: {.callout-tip title="solution"} 
+
+Package `corrr`, functions `correlate` and `rplot` provide a conveniemt tool.
+
+Note that `rplot()` creates a graphical object of class `ggplot`.
+We can endow it with more layers.  
+
+```{r}
+corrr::correlate(swiss) %>% 
+  corrr::rplot() %>% +
+  ggtitle("Correlation plot for Swiss Fertility data")
+```
+
+The high positive linear correlation between `Education` and `Examination` is moderately surprising. The negative correlation between the proportion of people involved in `Agriculture` and `Education` and `Examination`is also not too surprising. Secondary schooling required pupils from rural areas to move to  cities. 
+
+A more intriguing observation concerns the pairs `Catholic` and `Examination` (negative correlation) and `Catholic`  and `Education` (little correlation). 
+
+The response variable `Fertility` looks negatively correlated with `Examination` an `Education`. These correlations are worth being further explored. In Demography, the decline of Fertility is often associated with the the rise of women education. Note that `Examination` is about males, and that `Education` does not give details about the way women complete primary education. 
+
+
+
+
+:::::
+
+
+
+:::
+
+## Perform PCA on covariates
+
+
+Pairwise analysis did not provide us with a clear and simple picture of the French-speaking districts. 
+
+
+Play with centering and scaling 
+
+::: {.content-visible when-profile="solution"} 
+
+We first call `prcomp()` with the default arguments for centering and scaling, that is, we center columns and do not attempt to standardize columns.   
+
+
+::::: {.callout-tip title="solution"} 
+```{r}
+pco <- swiss %>% 
+  select(-Fertility) %>% 
+  prcomp()
+```
+
+The result  
+
+:::::
+
+
+
+:::
+
+
+::: {.content-visible when-profile="solution"} 
+
+::::: {.callout-tip title="solution"} 
+
+Hand-made centering of the dataframe
+```{r}
+X <- select(swiss, -Fertility)
+
+n <- nrow(X)
+
+Y <-  (X - matrix(1, nrow = n, ncol=1) %*%  rep(1/n,n) %*% as.matrix(X)) 
+
+Y <- as.matrix(Y)
+```
+
+::: {.content-visible when-format="html"}
+```{r}
+#| eval: !expr knitr::is_html_output()
+tibble(var=names(X), mX=colMeans(X), mY=colMeans(Y))  %>% 
+  mutate(across(where(is.numeric), ~ round(.x, digits=2))) %>% 
+  DT::datatable()
+```
+:::
+
+::: {.content-visible when-format="pdf"}
+```{r}
+tibble(var=names(X), mX=colMeans(X), mY=colMeans(Y))  %>% 
+  mutate(across(where(is.numeric), ~ round(.x, digits=2))) %>% 
+ knitr::kable()
+```
+:::
+
+
+
+:::::
+
+::::: {.callout-tip}
+
+Function `scale(X, scale=F)` from base `R` does the job.
+
+:::::
+
+
+:::
+
+
+::: {.content-visible when-profile="solution"} 
+
+::::: {.callout-tip title="solution"} 
+
+```{r}
+#| results: markup
+svd_Y <-  svd(Y)
+
+svd_Y %$% 
+  (as.matrix(Y) - u %*% diag(d) %*% t(v)) %>% 
+  norm(type = "F")   # <1> checking the factorization
+
+norm( diag(1, ncol(Y)) - 
+  (svd_Y %$% (t(v) %*% v)), 'F')  # <2> checking that colomns of `v` frm an orthonormal family. 
+```
+
+:::::
+
+::::: {.callout-tip}
+
+Note that we used the exposing pipe `%$%` from `magrittr` to unpack `svd_Y` which is a list with class `svd`  and members named `u`, `d` and `v`. 
+
+We could have used `with(,)` from base `R`. 
+
+
+:::::
+
+:::
+
+::: {.content-visible when-profile="solution"}
+
+::::: {.callout-tip title="solution"} 
+
+The matrix $1/n Y^T \times Y$ is the covariance matrix
+of the covariates. The spectral decomposition of the symmetric Semi Definite Positive (SDP) matrix  $1/n Y^T \times Y$ is related with the 
+SVD factorization of $Y$. 
+
+The spectral decomposition of $Y^T \times Y$ can be obtained using `eigen`. 
+
+
+```{r}
+#| results: markup
+(t(eigen(t(Y) %*% Y )$vectors) %*% svd_Y$v ) %>% 
+  round(digits=2)
+```
+
+::: {.callout-caution}
+
+Here, the eigenvectors of $Y^T \times Y$ coincide with the right singular vectors of $Y$ corresponding to non-zero singular values. Up to sign changes, it is always true when the  non-zero singular values are pairwise distinct. 
+
+:::
+
+
+Now we check that `prcomp` is indeed a wrapper for `svd`.
+```{r}
+#| results: markup
+(Y - pco$x %*% t(pco$rotation )) %>% 
+  round(digits = 2)  %>% 
+  head()
+```
+
+```{r}
+#| results: markup
+(svd_Y$v %*% t(pco$rotation )) %>% 
+  round(2) 
+```
+
+```{r}
+#| results: markup
+(t(pco$x) %*% pco$x) %>% 
+  round(2)  
+```
+
+
+:::::
+
+:::
+
+::: {.content-visible when-profile="solution"} 
+
+::::: {.callout-tip title="solution"} 
+
+Objects of class `pca` can be handled by generic functions like `plot`.
+
+```{r}
+plot(pco)
+```
+
+The displayed plot is the so-called *screeplot*, it provides information about the approximation of the decomposedmatrix by its truncated SVDs.
+
+:::::
+:::
+
+
+::: {.content-visible when-profile="solution"} 
+
+::::: {.callout-tip title="solution"} 
+```{r}
+p_screeplot <- . %>%   # <1>
+  tidy(matrix="pcs") %>% { 
+  ggplot(.) +
+  aes(x=PC, y=percent, label=format(1.-cumulative,2)) +   # <3>
+  geom_text(angle=45, vjust=-1, hjust=-0.1) + 
+  geom_col(fill=NA, colour="black") # <2>
+  }
+```
+
+1. Define a pipeline for building a screeplot
+2. Mind the braces on the right side of the first pipe
+3. `1- percent` tell the reader about the relative Frobenious error achieved by keeping the first components of the SVD expansion. 
+
+```{r}
+pco %>% 
+  p_screeplot() +
+  labs(title="Screeplot for swiss fertility data",
+  caption="Keeping the first two components is enough to achieve relative Froebenius relative error 3.3%")
+```
+
+:::::
+
+:::
+
+Project the dataset on the first two principal components (perform dimension reduction) and build a scatterplot. Colour the points according to the value of original covariates.  
+
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+```{r}
+#| warning: false
+#| message: false
+p <-  pco %>% # <1>
+  augment(swiss) %>% 
+  ggplot() +
+  aes(x=.fittedPC1, y=.fittedPC2, label=.rownames) +
+  geom_point() +
+  coord_fixed() +  # <2>  
+  ggrepel::geom_text_repel() 
+
+(p + 
+  aes(color=Infant.Mortality)) +
+(p + 
+   aes(color=Education)) +
+(p + 
+   aes(color=Examination)) +
+(p + 
+   aes(color=Catholic)) +
+(p + 
+   aes(color=Agriculture)) +
+(p + 
+   aes(color=Fertility)) +  
+plot_layout(ncol = 2) +
+plot_annotation(title="Swiss data on first two PCs" , 
+                subtitle = "centered, unscaled")
+
+```
+
+:::
+:::
+
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+
+We can extract factor $V$ from the SVD factorization 
+using generic function `tidy` from package `broom`
+```{r}
+#| results: markup
+pco %>% 
+  tidy(matrix="v") %>% 
+  glimpse()
+```
+
+The result is a tibble in *long form*. It is worth pivoting the dataframe  
+
+```{r}
+#| results: markup
+pco %>% 
+  tidy(matrix="v") %>% 
+  pivot_wider(id_cols =column, 
+              names_from = PC, 
+              values_from = value)
+```
+
+Think of the rows of `swiss` as vectors. Then matrix `v`
+In wide form, we readily access to the decomposition of the or 
+:::
+:::
+
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+
+```{r}
+prep_co_circle <-  . %>%  
+  tidy(matrix="v") %>%  
+  pivot_wider(id_cols =column, 
+              names_from = PC, 
+              values_from = value)
+```
+
+```{r  co_circle_ppl}
+co_circle_ppl <-  (
+    pco %>% 
+    prep_co_circle() %>% 
+    filter(F)
+    ) %>% 
+  ggplot() +
+  aes(x=`1`, y=`2`, label=column) +
+  geom_segment(aes(xend=0, yend=0), arrow = grid::arrow(ends = "first")) +
+  ggrepel::geom_text_repel() +
+  coord_fixed() +
+  xlim(c(-1.1, 1.1)) + ylim(c(-1.1, 1.1))  +
+  annotate("path",
+   x=0+1*cos(seq(0,2*pi,length.out=100)),
+   y=0+1*sin(seq(0,2*pi,length.out=100)), linetype="dashed") 
+```
+
+```{r}
+co_circle_ppl %+% (
+  pco %>% 
+  prep_co_circle()
+  )  +
+  ggtitle("Swiss, correlation circle", 
+          subtitle = "centered, unscaled")
+
+# pco %$% {
+#   ifelse(!is.null(center), "centered", "not centered") ;
+#   ifelse(!is.null(scale), "scaled", "not scaled")
+# }
+
+```
+:::
+:::
+
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+```{r}
+pco2 <- select(swiss, -Fertility) %>% 
+ prcomp(scale. = T)
+
+co_circle_ppl %+% (
+  pco2 %>% 
+  prep_co_circle()
+  )  +
+  ggtitle("Swiss, correlation circle", 
+          subtitle = "centered, scaled")
+
+```
+:::
+:::
+
+
+
+# Sanity checks 
+
+- $X$ : data matrix after column centering (use `scale(., center=T, scale-F)`)
+
+
+$$X$$
+
+::: {.content-visible when-profile="solution"} 
+
+::::: {.callout-tip title="solution"} 
+
+```{r}
+#| results: markup
+X <-  as.matrix(select(swiss, -Fertility)) |> 
+  scale(center = T, scale=F)
+
+# check centering, spot the difference in variances 
+X |>  
+  as_tibble() |> 
+  summarise(across(everything(), c(var, mean)))
+
+# should be 0
+norm(X  %*% pco$rotation - pco$x)
+
+# check the left singular vectors
+pco$x %*% diag((pco$sdev)^(-1)) |> 
+  as_tibble() |> 
+  summarise(across(everything(), c(mean,var)))
+
+# 
+pco$rotation %*% (diag((pco$sdev)^(-2)) %*% t(pco$x) %*% X)
+```
+
+:::::
+
+:::
+
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+```{r}
+#| results: markup
+pco |> 
+  tidy(matrix="v") |> 
+  pivot_wider(id_cols =column, 
+              names_from = PC, 
+              values_from = value) |> 
+  rowwise() |> 
+  summarise(column, l2=sum((c_across(where(is.numeric)))^2))
+```
+:::
+:::
+
+Checking Orthogonality of $V$ 
+
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+```{r}
+#| results: markup
+# checking that pco$rotation is an orthogonal matrix 
+t(pco$rotation) %*% pco$rotation
+pco$rotation %*% t(pco$rotation)
+```
+:::
+:::
+
+
+## Compare standardized and non-standardized PCA
+
+Pay attention to the correlation circles.
+
+1.  How well are variables represented?
+2.  Which variables contribute to the first axis?
+
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+```{r}
+pco_c <- swiss %>% 
+  select(-Fertility) %>% 
+  prcomp()
+
+pco_cs <- swiss %>% 
+  select(-Fertility) %>% 
+  prcomp(scale.=T, center=T)
+```
+
+```{r, out.width="50%"}
+(co_circle_ppl %+% (pco_c %>% 
+  prep_co_circle())  +
+  ggtitle("Swiss, correlation circle", 
+          subtitle = "centered, unscaled"))
+
+(
+  co_circle_ppl %+% (pco_cs %>% 
+  prep_co_circle())  +
+  ggtitle("Swiss, correlation circle", 
+          subtitle = "centered, scaled")
+)
+```
+:::
+:::
+
+
+Explain the contrast between the two correlation circles.
+
+In the sequel we focus on standardized PCA.
+
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+```{r}
+q <-  p %+% (pco_cs %>% 
+  augment(swiss)) +
+  ggtitle("Swiss data on first two PCs", subtitle = "centered, scaled")
+
+(q + 
+  aes(color=Infant.Mortality)) +
+(q + 
+   aes(color=Education)) +
+(q + 
+   aes(color=Examination)) +
+(q + 
+   aes(color=Catholic)) +
+(q + 
+   aes(color=Agriculture)) +
+(q + 
+   aes(color=Fertility)) +  
+plot_layout(ncol = 2)
+```
+:::
+:::
+
+### Investigate eigenvalues of covariance matrix
+
+How many axes should we keep?
+
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+```{r}
+p_screeplot %+% (pco_cs%>% 
+  tidy(matrix="pcs")) 
+
+plot(pco_cs)
+```
+
+Elbow rule:  keep the first three PCs 
+:::
+:::
+
+### Provide an interpretation of the first two principal axes
+
+1.  Which variables contribute to the two first principal axes?
+
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+
+This comes from the correlation circle. We rely on function `prep_co_circle` and 
+on the graphical pipeline `co_circle_ppl`. 
+
+```{r}
+(
+  co_circle_ppl %+% 
+    prep_co_circle(pco_cs) +
+    ggtitle("Swiss, correlation circle", 
+            subtitle = "centered, scaled")
+)
+```
+:::
+:::
+
+2.  Analyze the signs of correlations between variables and axes?
+
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+```{r}
+swiss |> 
+  select(-Fertility) |> 
+  corrr::correlate() |> 
+  corrr::shave() |> 
+  corrr::rplot(print_cor = T) +
+  theme_minimal()
+```
+:::
+:::
+
+### Add the `Fertility` variable
+
+Plot again the correlation circle using the same principal axes as before,
+but add the `Fertility` variable. How does  `Fertility` relate with covariates?
+with principal axes?
+
+::: {.content-visible when-profile="solution"} 
+
+::::: {.callout-tip title="solution"} 
+```{r}
+#| results: markup
+U <-  pco_cs %$%    # exposition pipe
+  (1/sqrt(nrow(x)-1) *x %*% diag((sdev)^(-1)))
+
+Uprime <- with(pco_cs, 
+  1/sqrt(nrow(x)-1) *x %*% diag((sdev)^(-1)))
+
+t(U) %*% U
+
+t(Uprime) %*% Uprime
+
+
+(norm(U,type = "F"))^2
+```
+:::::
+
+:::
+
+### Display individuals (districts)
+
+       
+### Comment
+
+
+### Biplot 
+
+::: {.content-visible when-profile="solution"} 
+
+::: {.callout-tip title="solution"} 
+```{r}
+pco <- swiss %>% 
+  select(-Fertility) %>% 
+  prcomp(scale.=T)
+
+df_cocirc <- pco %>% 
+  tidy(matrix="v") %>% 
+  pivot_wider(id_cols =column, 
+              names_from = PC, 
+              values_from = value) 
+
+augment(pco, data=swiss) %>% 
+  ggplot() + 
+  geom_point(aes(x=.fittedPC1, 
+                 y=.fittedPC2, 
+                 color=Fertility, label=.rownames)) +
+  coord_fixed() + 
+  ggrepel::geom_text_repel(aes(x=.fittedPC1, 
+                               y=.fittedPC2,
+                               color=Infant.Mortality,
+                               label=.rownames)) + 
+  geom_segment(data=df_cocirc,  
+               mapping=aes(x= 4* `1`, 
+                           y= 4 * `2`, 
+                           linetype=factor(column),
+                           label=column,
+                           xend=0, 
+                           yend=0), 
+               arrow = grid::arrow(ends = "first",
+                                    unit(.1, "inches")
+                                  )) + 
+  scale_color_viridis_c() +
+  xlim(c(-5,5)) + 
+  ylim(c(-5,5)) #+
+  # ggrepel::geom_text_repel(data=df_cocirc, 
+  #                          aes(x= 4* `1`,
+  #                              y= 4 * `2`, 
+  #                              label=column), 
+  #                          color="red")
+```
+:::
+
+:::
+
+::: {.content-visible when-profile="solution"} 
+
+::: {.callout-tip title="solution"} 
+```{r}
+
+autoplot(pco, 
+         data=swiss, 
+         color="Agriculture", 
+         loadings = TRUE, 
+         loadings.colour = 'blue',
+         loadings.label = TRUE)
+```
+
+:::
+
+:::
+
+ 
+
+::: {.content-hidden}
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+
+# kmeans
+
+```{r}
+km.2 <- swiss %>%  
+  select(-Fertility) %>% 
+  scale() %>% 
+  kmeans(centers = 2)
+
+make_df_centers <- function(object) { 
+  as.data.frame(object[["centers"]]) %>%
+  tibble::rownames_to_column(var=".cluster")
+}
+
+df_centers.2 <- make_df_centers(km.2)
+```
+:::
+:::
+:::
+
+::: {.content-hidden}
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+
+```{r}
+km.2.pca <-  swiss %>%  
+  select(-Fertility) %>% 
+  scale() %>% 
+  prcomp() %>% 
+  augment(data=swiss) %>% 
+  select(starts_with(".fittedPC")) %>% 
+  kmeans(centers=2)
+
+df_centers.2.pca <- make_df_centers(km.2.pca)
+```
+
+:::
+:::
+:::
+
+::: {.content-hidden}
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+
+```{r}
+#| eval: false
+broom::augment(km.2, scale(swiss)) %>%
+  ggplot() +
+  aes(x=Education, y=Infant.Mortality, colour=.cluster) +
+  geom_point(aes()) +
+  stat_voronoi(data = df_centers.2,
+               geom="path"               ) +
+  geom_point(data = df_centers.2,
+             colour = "black",
+             shape="+",
+             size=5) +
+  coord_fixed() +
+  labs(col="Voronoï cells") +
+  ggtitle("Kmeans over Swiss dataset, k=3")
+```
+:::
+:::
+:::
+
+::: {.content-hidden}
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+```{r}
+whiteside <-  MASS::whiteside
+```
+
+
+```{r}
+whiteside <- whiteside %>% 
+  select(-Insul) %>% 
+  scale() %>% 
+  as_tibble() %>% 
+  rename_with(.fn= ~ str_c( ., "scaled", sep="_")) %>% 
+  bind_cols(whiteside)
+
+km.2 <- whiteside %>% 
+  select(ends_with("scaled")) %>% 
+  kmeans(centers=2)
+
+
+df_centers.2 <-  make_df_centers(km.2)
+```
+:::
+:::
+:::
+
+::: {.content-hidden}
+::: {.content-visible when-profile="solution"} 
+::: {.callout-tip title="solution"} 
+```{r}
+#| eval: false
+#| 
+broom::augment(km.2, whiteside) %>%
+  ggplot() +
+  aes(x=Temp_scaled, y=Gas_scaled, colour=.cluster) +
+  geom_point(aes(shape=Insul)) +
+  stat_voronoi(data = df_centers.2,
+               geom="path",
+              outline=data.frame(x=c(-3, 3, 3, -3), 
+                                  y=c(-3, -3, 3, 3))
+               ) +
+  geom_point(data = df_centers.2,
+             colour = "black",
+             shape="+",
+             size=5) +
+  coord_fixed() +
+  labs(col="Voronoï cells") +
+  ggtitle("Kmeans over whiteside dataset, k=2")
+
+```
+:::
+:::
+:::
+
+# References 
+
+
+[https://scholar.google.com/citations?user=xbCKOYMAAAAJ&hl=fr&oi=ao](https://scholar.google.com/citations?user=xbCKOYMAAAAJ&hl=fr&oi=ao)
+
+

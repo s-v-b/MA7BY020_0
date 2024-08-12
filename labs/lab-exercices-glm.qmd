@@ -1,0 +1,259 @@
+---
+title: "Exercises on Gaussian Linear Modeling"
+
+format:
+  html:
+    output-file: lab-exercises-glm.html
+  pdf:
+    output-file: lab-exercises-glm.pdf
+
+execute: 
+  eval: false
+  echo: true
+  collapse: true
+
+
+params:
+  year: 2024 
+  curriculum: "M1 MIDS"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/isidata"
+---
+
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+{{< meta title >>}}
+
+- **`r stringr::str_glue('{params$curriculum}')`**
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- `r stringr::str_glue("[Course Homepage]({params$homepage})")`  
+- `r stringr::str_glue("[Moodle]({params$moodle})")`
+
+::: 
+
+::: {#second-column}
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
+:::
+
+:::
+
+
+```{r}
+#| label: setup
+#| warning: false
+#| message: false
+#| echo: false
+
+stopifnot(
+  require(tidyverse),
+  require(DT),
+  require(skimr),
+  require(GGally),
+  require(broom),
+  require(patchwork),
+  require(ggforce),
+  require(glue),
+  require(ggfortify),
+  require(magrittr),
+  require(tidymodels),
+  require(viridis),
+  require(gt),
+  require(ggforce), 
+  require(kableExtra),
+  require(DT)
+)
+
+tidymodels::tidymodels_prefer(quiet = TRUE)
+
+old_theme <- ggplot2::theme_set(
+  ggplot2::theme_bw(
+    base_size=9, 
+    base_family = "Helvetica")
+  )
+```
+
+
+
+# Exercices 
+
+## Testing GLM assumptions
+
+Simulate data using the model matrix, the estimated 
+
+```{r}
+#| 
+ys <- whiteside_aug1$.fitted + sigma_hat * rnorm(nrow(whiteside))
+ys_laplace <- whiteside_aug1$.fitted + sigma_hat * rexp(nrow(whiteside)) * sign(runif(nrow(whiteside)))
+  
+  
+whiteside_simul <- bind_cols(whiteside, ys) %>% 
+  rename(ys=`...4`)
+
+whiteside_simul_laplace <- bind_cols(whiteside, ys_laplace) %>% 
+  rename(ys=`...4`)
+
+lm1_simul <- lm(ys ~ Temp*Insul, data=whiteside_simul)
+
+lm1_simul_laplace <- lm(ys ~ Temp*Insul, data=whiteside_simul_laplace)
+```
+
+```{r}
+#| 
+whiteside_aug1_sim <-  augment(lm1_simul, whiteside_simul)
+
+(diag_1 %+% whiteside_aug1_sim) +
+(diag_2 %+% whiteside_aug1_sim) +
+(diag_3 %+% whiteside_aug1_sim) +  
+ guide_area() +
+  plot_layout(guides = "collect") +
+  plot_annotation(title=glue("{cur_dataset} dataset"),
+                  subtitle = glue("Regression diagnostic  {deparse(lm1_simul$call$formula)}"), caption = 'One possible outlier.\n Visible on all three plots.'
+                  )
+```
+
+
+```{r}
+#| 
+whiteside_aug1_sim_laplace <-  augment(lm1_simul_laplace, whiteside_simul_laplace)
+
+(diag_1 %+% whiteside_aug1_sim_laplace) +
+(diag_2 %+% whiteside_aug1_sim_laplace) +
+(diag_3 %+% whiteside_aug1_sim_laplace) +  
+ guide_area() +
+  plot_layout(guides = "collect") +
+  plot_annotation(title=glue("Resimulated {cur_dataset} dataset"),
+                  subtitle = glue("Regression diagnostic  {deparse(lm1_simul_laplace$call$formula)}"), caption = 'Laplace noise.\n Visible on all three plots?'
+                  )
+```
+
+
+```{r}
+#| 
+lm1_simul %>% 
+  tidy_lm()
+```
+
+```{r}
+#| 
+lm1_simul %>% 
+  glance_lm()
+```
+
+```{r}
+#| 
+formulae_chr <- list(lm0, lm1, lm1_simul, lm1_simul_laplace)  %>% 
+  map_chr(~ deparse(.[["call"]][["formula"]]))
+
+list(lm0, lm1, lm1_simul, lm1_simul_laplace) %>% 
+  map_dfr(glance, .id = "model") %>% 
+  mutate(across(-c(model, p.value), 
+                ~ round(.x, digits=2)),
+         p.value=signif(p.value,3), 
+         frm = formulae_chr
+         ) %>% 
+  relocate(frm) %>% 
+  select(-model) %>% 
+  DT::datatable(extensions="Responsive",
+                options = list(dom = 't'), 
+                caption = glue("Dataset {lm1$call$data}"))
+
+
+```
+
+
+## Quadratic fitting 
+
+```{r}
+#| 
+lm2 <- lm(Gas ~ poly(Temp, degree=2, raw=TRUE), whiteside)
+
+model.matrix(lm2) %>% 
+  as_tibble() %>% 
+  set_colnames(c("Inter", "Temp", "Temp^2")) # , "Temp^3", "Temp^4", "Temp^5" ))
+```
+
+
+```{r}
+#| 
+lm2 %>% 
+  tidy_lm()
+```
+
+```{r}
+#| 
+lm2 %>% 
+  augment(data=whiteside) %>% 
+#  mutate(truc=.resid/(sqrt(1-.hat)*.std.resid))
+  ggplot() +
+  aes(x=Temp, y= Gas) + 
+  geom_point(aes(shape=Insul)) +
+  geom_line(aes(x=Temp, y=.fitted)) +
+  geom_smooth(method="lm", formula = y ~ x, se = F, linetype="dotted")
+```
+
+
+```{r}
+#| 
+lm3 <- lm(Gas ~ poly(Temp, degree=2, raw=TRUE)* Insul, whiteside)
+```
+
+
+```{r}
+#| 
+lm3 %>% 
+  broom::tidy()
+```
+
+
+```{r}
+#| 
+lm3 %>% 
+  augment(data=whiteside) %>% 
+  ggplot() +
+  aes(x=Temp, y= Gas) + 
+  geom_point(aes(shape=Insul)) +
+  geom_line(aes(x=Temp, y=.fitted, linetype=Insul)) +
+  geom_smooth(aes(color=Insul), method="lm", formula = y ~ x, se = F, linetype="dotted")
+```
+
+
+
+```{r}
+#| 
+whiteside_aug3 <-  augment(lm3, whiteside)
+
+(diag_1 %+% whiteside_aug3) +
+(diag_2 %+% whiteside_aug3) +
+(diag_3 %+% whiteside_aug3) +  
+ guide_area() +
+  plot_layout(guides = "collect") +
+  plot_annotation(title=glue("Resimulated {cur_dataset} dataset"),
+                  subtitle = glue("Regression diagnostic  {deparse(lm3$call$formula)}"), caption = ''
+                  )
+```
+
+
+```{r}
+#| 
+lm10 <- lm(Gas ~ poly(Temp, degree=10, raw=TRUE)* Insul, whiteside)
+```
+
+
+```{r}
+#| 
+lm10 %>% 
+  augment(data=whiteside) %>% 
+  ggplot() +
+  aes(x=Temp, y= Gas) + 
+  geom_point(aes(shape=Insul)) +
+  geom_line(aes(x=Temp, y=.fitted, linetype=Insul)) +
+  geom_smooth(aes(color=Insul), method="lm", formula = y ~ x, se = F, linetype="dotted")
+```
+
+## Comparing models
+
+

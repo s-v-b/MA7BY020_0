@@ -1,0 +1,304 @@
+---
+format:
+  html:
+    output-file: est-miashs-2024-s2.html
+  pdf:
+    output-file: est-miashs-2024-s2.pdf
+
+execute: 
+  eval: true
+  echo: false
+  collapse: true
+  
+  
+params:
+  truc: html
+  year: 2023 
+  curriculum: "L3 MIASHS"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/isidata"
+  moodle: ""
+
+engine: knitr
+---
+
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+**EST du 2024-06-26 (2 heures)**
+
+- **`r glue::glue('{params$curriculum}')`** 
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- 2024-06-26  
+
+:::
+
+::: {#second-column}
+
+
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){style="float:right; size: 50px;"
+width="132"}
+
+
+:::
+
+:::
+
+::: {.callout-important}
+
+### Conventions (rappels)
+
+Dans la suite, la taille de l'échantillon numérique
+$$x_1, x_2, \ldots, x_n$$ 
+est $n=4k +3$ avec $k>1$. 
+
+Les valeurs $x_1, \ldots, x_n$ sont supposées deux à deux distinctes. Les *statistiques d'ordre* sont notées 
+$$x_{1:n} < x_{2:n} < \ldots < x_{n:n}$$
+
+On note 
+\begin{align*}
+\overline{X}_n & \stackrel{\text{def}}{=} \frac{1}{n} \sum_{i=1}^n x_i & & \textit{la moyenne empirique} \\
+\textsf{m}_n & \stackrel{\text{def}}{=} x_{2k+2:n} = x_{\lfloor n/2\rfloor+1:n} & & \textit{la médiane empirique} \\
+% <!-- \overline{X}^{\text{tr}}_n & \stackrel{\text{def}}{=} \frac{1}{2k+3}\sum_{i=k+1}^{3k+3}  x_{1:n} && \textit{la moyenne élaguée} \\ -->
+F_n(x) & = \frac{1}{n} \sum_{i=1}^n \mathbb{I}_{x_i \leq x} && \textit{la fonction de répartition empirique} \\
+F_n^{\leftarrow}(p) & = \inf \left\{y : y \in \mathbb{R}, \quad F_n(y)\geq p \right\} && \textit{fonction quantile empirique} \\
+\textsf{MAD}_n & \stackrel{\text{def}}{=}  \frac{1}{n} \sum_{i=1}^n |x_i -m_m| && \textit{la déviation absolue moyenne} \\
+\textsf{MED}_n & \stackrel{\text{def}}{=} \textsf{MEDIANE} \left( |x_i -m_m|\right)_{1 \leq i\leq n} &&\textit{la déviation absolue médiane} \\
+% <!-- \widehat{\textsf{sd}}_n & \stackrel{\text{def}}{=} \sqrt{\frac{1}{n} \sum_{i=1}^n |x_i -\overline{X}_n|^2} && \textit{l'écart-type empirique} \\
+% \textsf{IQR} & \stackrel{\text{def}}{=}  x_{3k+3:4k+3}-x_{k+1:4k+3} && \textit{l'écart inter-quartile} -->
+\end{align*}
+Les quartiles empiriques sont les statistiques d'ordre $i\times (k+1)$ : $x_{ik+i:4k+3}$ pour $i \in \{1,2,3\}$.
+
+:::
+
+
+::: {.callout-note}
+
+### Statistiques descriptives univariées 
+
+1. Donner la meilleure minoration possible de $\frac{x_{n:n}-x_{1:n}}{\widehat{\textsf{sd}}_n}$. 
+2. Calculer $F_n \circ F_n^{\leftarrow}(p)$ pour $0 < p \leq 1$.
+3. On dispose d'un algorithme linéaire pour calculer la médiane empirique d'un échantillon (non trié). Proposer un algorithme linéaire pour calculer $\textsf{MED}_n$, la déviation absolue médiane d'un échantillon (non trié) (vous pouvez utiliser l'algorithme linéaire pour la médiane comme une boîte noire).
+
+::: {.content-visible when-profile='session-I'} 
+ 
+- Exprimer les quartiles en fonction  des statistiques d'ordre 
+- Est-il toujours vrai que $\textsf{MAD}_n \leq \widehat{\text{sd}}_n$ ? 
+- Est-il vrai que $\textsf{MAD}_n$ peut s'écrire comme une combinaison linéaire des statistiques d'ordre ?
+- Selon vous, existe-t-il une constante $\kappa$ telle que  $\textsf{MAD}_n \leq \kappa \textsf{IQR}$ ?
+Selon vous, existe-t-il une constante $\kappa$ telle que  $\textsf{MAD}_n \geq \kappa \textsf{IQR}$ ?
+
+ 
+
+
+1. Existe-t-il une constante $\kappa>0$ telle que pour tout échantillon $\kappa \textsf{IQR} \geq 2 \widehat{\textsf{sd}}_n$ ? (justifier)
+1. Est-il vrai que pour tout échantillon $\widehat{\textsf{sd}}_n \leq \frac{x_{n:n}-x_{1:n}}{2}$ ?  (justifier)
+1. Est-il vrai que pour tout échantillon $\widehat{\textsf{sd}}_n \leq \frac{x_{n:n}-x_{1:n}}{4}$ ? (justifier)
+1. Est-il vrai que pour tout échantillon  $|\overline{X}_n^{\text{tr}} - \textsf{m}_n |< \frac{\textsf{IQR}}{2}$ ? (justifier)
+1. Est-il vrai que pour tout échantillon  $|\overline{X}_n^{\text{tr}} - \textsf{m}_n |< \frac{\textsf{IQR}}{6}$ ?  (justifier)
+1. Est-il vrai que pour tout échantillon  $|\overline{X}_n^{\text{tr}} - \textsf{m}_n |< \frac{\textsf{IQR}}{3}$ ? (justifier)
+
+:::
+
+:::
+
+
+
+::: {.callout-important}
+
+### Conventions (rappel)
+
+Si $F$ désigne la fonction de répartition d'une loi de probabilité sur $\mathbb{R}$, la *fonction de survie* associée est notée $\overline{F}$ et définie par $\overline{F}(x)\stackrel{\text{df}}{=} 1 -F(x)$. 
+
+La *fonction quantile* associée à $F$ est notée $F^{\leftarrow}$ et définie par 
+$$F^{\leftarrow}(p) \stackrel{\text{df}}{=}  \inf\left\{ x : F(x) \geq p \right\}\qquad \text{pour}\quad p \in ]01,1[$$
+
+Le taux de hasard est le rapport entre la densité et la fonction de survie.
+
+:::
+
+::: {.callout-note}
+
+### Fonction de répartition/Fonction de quantile/Fonction de survie
+
+Au début de cet exercice $F$ est la fonction de répartition de la loi de $|X|$ avec $X \sim \mathcal{N}(0,1)$ (Gaussienne centrée réduite). La fonction de répartition de $\mathcal{N}(0,1)$ sera notée $\Phi$, la densité  de la loi $\mathcal{N}(0,1)$ sera notée $\phi$.  
+
+1. Donner une expression de la densité de la loi de $|X|$ (loi définie par $F$) et de la fonction de survie associée.
+1. Quel est le taux de hasard de la loi définie par $F$ (exprimer à l'aide de $\phi, \Phi, \overline{\Phi}$) ?
+2. La dérivée du taux de hasard de la loi définie par $F$ est-elle de signe constant ? Si oui quel est son signe ?
+
+Maintenant $X$ est distribuée comme le minimum de $n$ variables exponentielles indépendantes (loi exponentielle de fonction de survie $x \mapsto \exp(-x)$ pour $x \in \mathbb{R}$).
+
+3. Quel est le taux de hasard de la loi de $X$ ? 
+  
+Maitenant $Y_1, Y_2, Y_3$ sont distribuées indépendamment selon une loi exponentielle de de fonction de survie $x \mapsto \exp(-x)$ pour $x \in \mathbb{R}$. On définit $X_1, X_2, X_3$ par $X_1=Y_1, X_2=\min(Y_1, Y_2), X_3=\min(Y_1, Y_3)$.
+
+4. Quel est le taux de hasard de la loi de $\max(X_2, X_3)$ ?
+
+
+::: {.content-visible when-profile='session-I'} 
+
+- Si $- \log \overline{F}$ est convexe, le taux de hasard est croissant ? (Vrai/Faux)
+- Le taux de hasard d'une loi de Poisson est croissant ?
+- Le taux de hasard d'une loi géométrique est croissant ?
+- Le taux de hasard d'une loi de Pareto ($\overline{F}_{\tau, \gamma}(x)= (x/\tau)^{-1/\gamma}$ pour $x>\tau$, $\gamma,\tau>0$) est croissant ?
+- Le taux de hasard définit la fonction de répartition ?
+- Le taux de hasard définit la loi de probabilité  ?
+
+
+Considérer la fonction de répartition $F_{\mu,\sigma}(x) =  1 - \exp(- (x-\mu)/\sigma)$ $x\geq \mu$, $\sigma >0$.
+
+1. Quelle est la *fonction quantile* associée  ?
+2. Quels sont les quartiles de la loi définie par $F_{\mu,\sigma}$ ?
+3. Calculer le *taux de hasard* en $x>0$ de la loi définie par $F_{\mu,\sigma}$. 
+
+Considérer la fonction de répartition ${F}_{\sigma, \xi}$ définie par $\overline{F}_{\sigma, \xi}(x)= 1 - {F}_{\sigma, \xi}(x_) = (x/\sigma)^{-\xi}$ pour $x>\sigma$, $\sigma,\xi>0$
+
+4. Calculer la médiane et les quartiles
+5. Calculer l'espérance. 
+6. Calculer le taux de hasard en $x> \sigma$. 
+
+:::
+
+:::
+
+::: {.content-visible when-profile='session-I'} 
+
+
+::: {.callout-important}
+
+### Notations
+
+Une suite de *quotients de mortalité* $(q_x)_{x \in \mathbb{N}}$
+(où $q_x$ représente la probabilité de mourir à l'âge $x$ sachant qu'on a vécu au moins jusqu'à l'âge $x$, $q_x \in [0,1]$ pour tout $x$) définit une fonction de répartition $F$ et une fonction de survie $\overline{F}\stackrel{\text{def}}{=} 1 -F$ par 
+$$\overline{F}(x+1) = \overline{F}(x) \times (1-q_{x+1})$$
+et $\overline{F}(0)= 1- q_0$.   
+
+L'*espérance de vie à la naissance* $e_0$  est l'espérance de la loi définie par $F$.
+
+L'*espérance de vie résiduelle à l'âge $x$*,  $e_x$  est l'espérance de la loi dont la  fonction de survie est  $y \mapsto \overline{F}(y-x)\overline{F}(x-1)$ pour $y \in \mathbb{N}$.
+
+:::
+
+::: {.callout-note}
+
+### Démographie
+
+1. L'espérance de vie résiduelle à 65 ans dépend des quotients de mortalité aux âges 60 à 64 ans.(Vrai/Faux)
+2. L'espérance de vie à la naissance ne dépend pas de la structuration en âge de la population (Vrai/Faux)
+3. Pour une année et une population donnée, l'espérance de vie résiduelle décroit avec l'âge (Vrai/Faux)
+4. Si on connaît l'espérance de vie à la naissance dans deux populations disjointes et la taille de ces deux populations, on peut obtenir l'espérance de vie à la naissance dans la réunion de ces deux populations en calculant la moyenne pondérée des espérances de vie à la naissance. (Vrai/Faux)
+5. Si on connaît toutes les espérances de vie résiduelles dans une population, on peut calculer les quotients de mortalité dans cette population. (Vrai/Faux)
+6. L'espérance de vie à la naissance coïncide avec l'age moyen du décès observé dans la population (Vrai/Faux). 
+7. Le taux de mortalité brut est une fonction des quotients de mortalité (Vrai/Faux)
+8. Écrire l'espérance de vie à la naissance comme une fonction de quotients de mortalité aux âges $0$ et $1$ et de l'espérance de vie résiduelle à l'âge $2$. 
+9. Calculer la dérivée de $e_0$ par rapport à $q_1$. 
+10. Proposer une formule pour la durée de vie médiane selon la loi définie par la fonction de survie dérivée des quotients de mortalité. 
+
+
+
+ 
+1. L'espérance de vie à la naissance dépend de la structuration en âge de la population (Vrai/Faux)
+2. Pour une année et une population donnée, l'espérance de vie résiduelle décroit avec l'âge (Vrai/Faux)
+3. Si on connaît l'espérance de vie à la naissance dans deux populations disjointes et la taille de ces deux populations, on peut obtenir l'espérance de vie à la naissance dans la réunion de ces deux populations en calculant la moyenne pondérée des espérances de vie à la naissance.
+4. Si on connaît toutes les espérances de vie résiduelles dans une population, on peut calculer les quotients de mortalité dans cette population.   
+5. L'espérance de vie à la naissance coïncide avec l'age moyen du décès observé dans la population. 
+6. Quelle est la dérivée de l'espérance de vie à la naissance par rapport au quotient de mortalité à l'age $x$?
+7. Le taux de mortalité brut est-il une fonction des quotients de mortalité ?
+ 
+
+  
+
+1. Exprimer $e_0$ en fonction des quotients de mortalité $(q_x)_x$
+2. Établir une relation entre $e_x$ et $e_{x+1}$
+3. Exprimer $\frac{\partial e_0}{\partial q_x}$ en fonction de $\overline{F}$ et d'une espérance de vie résiduelle.
+4. A-t-on toujours $e_1 < e_0$ ? (justifier)
+
+
+:::
+
+
+:::
+
+<!-- {{< pagebreak >}}  -->
+
+
+::: {.callout-note}
+
+### Matrices
+
+Dans cet exercice $\mathbb{X}$ est une matrice $n \times p$ de rang $r$.
+On note $\mathbb{X}^+$ la pseudo-inverse (Moore-Penrose)  de $\mathbb{X}$ c'est à dire la matrice qui vérie
+
+\begin{align*}
+\mathbb{X} \mathbb{X}^+ \mathbb{X} & = \mathbb{X} \\ 
+\mathbb{X}^+ \mathbb{X} \mathbb{X}^+ & = \mathbb{X}^+ \\
+(\mathbb{X}^+ \mathbb{X})^\top & = \mathbb{X}^+\mathbb{X} \\
+(\mathbb{X} \mathbb{X}^+)^\top & = \mathbb{X}\mathbb{X}^+ 
+\end{align*}
+
+1. Quelles sont les dimensions de $\mathbb{X}^+$?
+2. On supppose $r=p$,  montrer que si $z$ est un vecteur colonne de bonne dimension, $\mathbb{X}^+ z$ est la transposée d'une combinaison linéaire des lignes de $\mathbb{X}$
+3. On suppose maintenant $r=n$, exprimer $\mathbb{X}^+$ en fonction de $\mathbb{X}$.
+4. On suppose toujours $r=n$, que vaut  $\mathbb{X}\mathbb{X}^+$?
+
+:::
+
+{{< pagebreak >}} 
+
+::: {.callout-important}
+
+### Notation
+
+Si $p_1\leq p_2 \ldots \leq p_n$ désigne une fonction de masse (densité) d'une loi de probabilité sur un univers à $n$ éléments, la *fonction de Lorenz* associée est définie par
+$$L(z)\stackrel{\text{def}}{=} \sum_{j\leq nz} p_j /(\sum_{i\leq n} p_i)$$
+
+pour $0 \leq z \leq 1$.
+
+:::
+
+
+::: {.callout-note}
+
+### Fonction de Lorenz/Indices d'inégalité
+
+::: {.content-visible when-profile='session-I'} 
+ 
+ 
+Voir [Lab *Prénoms*](https://stephane-v-boucheron.fr/labs/scidon/_handout/lab-babynames.html)
+
+- Si $p_1, \ldots, p_n$ désigne une fonction de masse (densité) d'une loi de probabilité sur un univers à $n$ éléments, quelle est la valeur de $(p_1, 
+\ldots, p_n)$ qui minimise $\sum_{i=1}^n p_i^2$ ? Quelle est valeur du minimum  de $\sum_{i=1}^n p_i^2$?
+- Si $p_1, \ldots, p_n$ désigne une fonction de masse (densité) d'une loi de probabilité sur un univers à $n$ éléments, quelle est la valeur de $(p_1, \ldots, p_n)$ qui minimise la probabilité que si on effectue deux tirages indépendants selon la loi définie par $(p_1, \ldots, p_n)$, on obtienne deux résultats identiques ?
+- Si $L$  est la fonction/courbe de Lorenz d'une distribution de probabilité, alors, Si $u, v, w$ sont trois points de $I=[0,1]$ tels que $u < v < w$, on a 
+$$\frac{L(v) − L(u)}{v − u} ≤ \frac{L(w) − L(u)}{w-u}  ≤ \frac{L(w) − L(v)}{w − v}$$
+
+
+
+
+1. Si $p_1, \ldots, p_n$ désigne une fonction de masse (densité) d'une loi de probabilité sur un univers à $n$ éléments, quelle est la valeur de $(p_1, \ldots, p_n)$ qui minimise $\sum_{i=1}^n p_i^2$ ? Quelle est valeur du minimum  de $\sum_{i=1}^n p_i^2$?
+1. Peut-on avoir  $L(.3)=.3$ et $L(.5)=.4$ simultanément ? (justifier)  
+1. Si $L(.5)=.25$, quelle est la valeur minimale de $L(.75)$?  
+1. Si $L(.75)=.375$, et $L(.5)=.25$,  quelle est la valeur minimale de $L(.9)$? 
+
+:::
+
+
+:::
+
+
+
+  
+
+::: {.content-visible when-profile='solution'} 
+ 
+ 
+:::
+
+
+
+
+

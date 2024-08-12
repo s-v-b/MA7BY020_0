@@ -1,0 +1,318 @@
+---
+date: "`r Sys.time()`"
+
+execute:
+  echo: true
+  eval: true
+  collapse: true
+
+format:
+  html:
+    output-file: lab-test-miashs.html
+  pdf:
+    output-file: lab-test-miashs.pdf
+
+engine: knitr
+# server: shiny
+---
+
+```{r}
+params = list(
+  truc= "Science des Données",
+  year= 2023 ,
+  curriculum= "L3 MIASHS",
+  university= "Université Paris Cité",
+  homepage= "https://stephane-v-boucheron.fr/courses/scidon",
+  moodle= "https://moodle.u-paris.fr/course/view.php?id=13227",
+  path_data = './DATA',
+  country_code= '...',
+  country= '...',
+  datafile= '...'
+  )
+
+attach(params)
+```
+
+```{r}
+#| include: true
+#| message: false
+#| warning: false
+require(patchwork)
+require(glue)
+require(here)
+require(tidyverse)
+require(plotly)
+require(DT)
+require(GGally)
+require(ggforce)
+require(ggfortify)
+
+tidymodels::tidymodels_prefer(quiet = TRUE)
+
+old_theme <-theme_set(theme_minimal(base_size=9, base_family = "Helvetica"))
+```
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+
+
+- **`r stringr::str_glue('{params$curriculum}')`**
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- `r stringr::str_glue("[Course Homepage]({params$homepage})")`  
+- `r stringr::str_glue("[Moodle]({params$moodle})")`
+
+::: 
+
+::: {#second-column}
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
+:::
+
+:::
+
+
+```{r}
+#| label: setup
+#| warning: false
+#| message: false
+#| echo: true
+
+
+```
+
+## Hypothesis testing
+
+ 
+Download 'Naissances totales par sexe' from URL `https://www.ined.fr/fichier/s_rubrique/168/t35.fr.xls` from [INED](https://www.ined.fr/).
+
+```{r}
+births_fr_path <- here(path_data, 't35.fr.xls')
+births_fr_url <- 'https://www.ined.fr/fichier/s_rubrique/168/t35.fr.xls'
+
+if (!file.exists(births_fr_path)) {
+  download.file(births_fr_url, births_fr_path, mode = "wb")
+}
+```
+
+```{r}
+births_fr <-  readxl::read_excel(births_fr_path, skip = 3)
+
+births_fr <- births_fr[2:122, ] 
+
+
+births_fr <- births_fr |> 
+  rename(year= `Répartition par sexe et vie`,
+         n_livebirths = `Ensemble des nés vivants`,
+         n_live_boys = `Nés vivants - Garçons`,
+         n_stillbirths = `Ensemble des enfants sans vie`,
+         n_still_boys =`Enfants sans vie - Garçons`) |> 
+  select(year, starts_with('n_')) 
+
+#births_fr <- births_fr[1:122,]
+
+births_fr |> 
+  glimpse()
+```
+
+Null Hypothesis  
+: The probability of a live newborn baby being a boy is $p_0 =.5121244$
+
+Alternative Hypothesis
+: The probability of a live newborn baby being a boy is $p > p_0=.5121244$
+
+Data and modeling
+
+
+Probability of observed data if live newborn sex is distributed according to Bernoulli($p$)
+
+If amongst $n$ livebirths we observe $n_g$ boys:
+$$\binom{n}{n_g} p^{n_g} (1-p)^{n-n_g}$$
+Compute the Likelihood Ratio for alternative $p<p_0$
+
+$$\left(\frac{p(1-p_0)}{(1-p)p_0}\right)^{n_g} \times \left(\frac{1-p}{1-p_0}\right)^n$$
+
+::: {.callout-note}
+
+The Likelihood Ratio  increases with respect to $n_g$ for all values of $p > p_0$. 
+
+Comparing the likelihood ratio to a threshold amounts to compare $n_g$ to a(nother) threshold. 
+
+Here Likelihood Ratio testing is motivated by common sense and can be justified by Theory (Neyman-Pearson's Lemma).
+
+:::
+
+::: {.callout-important}
+
+### Definition: Error of the first kind (Type I error)
+
+The error of the first kind occurs when the null hypothesis is true, but the test would reject it.
+
+:::
+
+
+::: {.callout-important}
+
+### Definition: Error of the second  kind (Type II error)
+
+The error of the second kind occurs if the alternative hypothesis is true but the test is deciding in favor of the null-hypothesis.
+
+:::
+
+The next lemma justifies our interest in Likelihood Ratio testing
+
+::: {.callout-important}
+
+### Lemma (Neyman-Pearson, simplified)
+
+When testing a *simple* null hypothesis $H_0 : X \sim P_0$ against a simple alternative $H_1 : X \sim P_1$, if there exists a threshold $\tau$ such that the test $T$  with *critical region* $\{x : p_1(x) \geq \tau \times p_0(x) \}$ has type I error probability equal to $\alpha \in (0,1)$, then for any test $T'$
+$$P_0\{ T'(x) =1\} \leq \alpha \quad \Rightarrow \quad P_1\{ T'(x) =1\}\leq P_1\{ T(x) =1\}$$
+
+:::
+
+
+::: {.callout-note}
+
+### Level (of significance) 
+
+The level of significance is defined as the fixed probability of wrong elimination of null hypothesis when in fact, it is true. The level of significance is stated to be the probability of type I error and is preset by the researcher.
+
+:::
+
+## Testing a Bernoulli parameter
+
+We think of the sex of newborns as a sequence of independent Bernoulli trials. Under the simplest model, all Bernoulli trials have the same "success" probability.In principle, we have no a priori knowledge of the "success" probability. We take $p_0$ as the empirical 
+frequency of livebirth of boys throughout the century. 
+
+```{r}
+births_fr |> 
+  summarise(tot=sum(n_livebirths, na.rm = T), 
+            tot_boys=sum(n_live_boys, na.rm = T), 
+            msr=tot_boys/tot)
+```
+
+
+We compute now for each year, the probability that a binomial random variable with size 
+*number of livebirths* during the year and success probability $p_0$, exceeds the number of livebirths of boys during that year, the result is denoted by `pval`.   
+
+```{r}
+p_0 <- 0.5121244
+
+births_fr <- births_fr |> 
+  mutate(pval = pbinom(n_live_boys, size = n_livebirths, prob = p_0, lower.tail = F)) |>
+  relocate(pval, .after = year) 
+```
+
+*Under our null hypothesis*, `pval` is a random variable, and it is (almost) uniformly distributed over $[0,1]$. If we want a testing procedure with type I error $\alpha$, we can decide to reject the null hypothesis when `pval` (usually called the $p$-value) is less than $\alpha$.
+
+Agree on Type I error probability ($\alpha$) equal to $.05$. 
+
+```{r}
+births_fr |> 
+  DT::datatable()  |> 
+  DT::formatSignif('pval', digits=3) |> 
+  DT::formatStyle(
+  'pval',
+  backgroundColor = DT::styleInterval(c(.05, 1), values = c('red', 'lightgreen', 'white'))
+)
+```
+
+Throughout the $123$ years in the sample we observe $25$ p-values smaller than $5\%$. 
+This is far more than what we expect.
+
+
+
+## Geissler data, goodness of fit testing.
+
+From package `vcdExtra`
+
+> Geissler (1889) published data on the distributions of boys and girls in families in Saxony, collected for the period 1876-1885. The Geissler data tabulates the family composition of 991,958 families by the number of boys and girls listed in the table supplied by Edwards
+
+```{r}
+Geissler <- vcdExtra::Geissler 
+Geissler |>  glimpse()
+```
+
+We isolate families of size $12$. 
+
+```{r}
+big_families <- Geissler |> 
+  filter(size==12) |> 
+  select(-size, -girls) 
+```
+
+There are `r sum(big_families$Freq)` of them.
+
+```{r}
+big_families |> 
+  pivot_wider(names_from = boys, values_from = Freq) |> 
+  knitr::kable()
+```
+
+According to our simple null hypothesis, the large families compositions
+should be distributed according to a binomial distribution with size $12$ and 
+success probability $p_0$. 
+
+We can perform a goodness of fit test for this distribution. The Chi-square goodness of fit test comes to mind 
+
+
+```{r}
+expected <- dbinom(0:12, 12, p_0)
+observed <- big_families$Freq
+
+chisq.test(observed, p=expected) |> 
+  broom::tidy() |> 
+  knitr::kable()
+```
+
+We merge rare events as an attempt to avoid the warning. 
+
+```{r}
+expected_collapsed <- expected[2:12]
+expected_collapsed[1] <- expected_collapsed[1]+ expected[1]
+expected_collapsed[11] <- expected_collapsed[11]+ expected[13]
+
+observed_collapsed <- observed[2:12]
+observed_collapsed[1] <- observed_collapsed[1]+ observed[1]
+observed_collapsed[11] <- observed_collapsed[11]+ observed[13]
+```
+
+```{r}
+chisq.test(observed_collapsed, p=expected_collapsed) |> 
+  broom::tidy() |> 
+  knitr::kable()
+```
+
+::: {.callout-note}
+
+We are led to reject the null hypothesis for all reasonable type I error probabilities.
+
+:::
+
+
+Let us compare the empirical distribution and the theoretical distribution of large families compisitions
+
+```{r}
+p <- big_families |> 
+  ggplot() + 
+  aes(x= boys, y=Freq/sum(Freq)) +
+  geom_col(fill="white", color="black", alpha=.5) +
+  geom_col(aes(y=expected), fill="white", color="blue", alpha=.5) +
+  labs(
+    title="Geissler data, composition of 6115 families of size 12",
+    subtitle="Black= empirical distribution. Blue=Theoretical distribution"
+  )
+
+p
+```
+
+Using logarithmic scale on the `y` axis emphasizes the overdispersion of the empirical distribution. 
+
+```{r}
+p + scale_y_log10()
+```
+
+
+
+

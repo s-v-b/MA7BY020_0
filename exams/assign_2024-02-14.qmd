@@ -1,0 +1,407 @@
+---
+format:
+  html:
+    output-file: cc-2024-02-14.html
+  pdf:
+    output-file: cc-2024-02-14.pdf
+
+execute: 
+  eval: true
+  echo: false
+  collapse: true
+  
+  
+params:
+  truc: html
+  year: 2023 
+  curriculum: "M1 MIDS & MFA"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/isidata"
+  moodle: ""
+
+engine: knitr
+---
+
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+**Analyse Exploratoire: CC 2024-02-14**
+
+- **`r glue::glue('{params$curriculum}')`** 
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- 2024-02-14 13h30-15h00  
+
+:::
+
+::: {#second-column}
+
+
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){style="float:right; size: 50px;"
+width="132"}
+
+
+:::
+
+:::
+
+
+
+# Résumés numériques
+
+Dans cet exercice, la taille de l'échantillon numérique
+$$x_1, x_2, \ldots, x_n$$ 
+est $n=4k +3$ avec $k>1$. 
+
+Les valeurs $x_1, \ldots, x_n$ sont supposées deux à deux distinctes. Les *statistiques d'ordre* sont notées 
+$$x_{1:n} < x_{2:n} < \ldots < x_{n:n}$$
+
+On note $\overline{X}_n = \frac{1}{n} \sum_{i=1}^n x_i$ la moyenne empirique de l'échantillon, et $m_n=x_{2k+2:n}= x_{\lfloor n/2\rfloor+1:n}$ la médiane empirique de l'échantillon. 
+
+On note la fonction de répartition empirique $F_n$ :
+$$F_n(x) = \frac{1}{n} \sum_{i=1}^n \mathbb{I}_{x_i \leq x}$$
+et la fonction quantile $F_n^{\leftarrow}$ :
+$$F_n^{\leftarrow}(p) = \inf \left\{y : y \in \mathbb{R}, \quad F_n(y)\geq p \right\} $$
+
+On définit de plus:
+$$\textsf{MAD}_n \stackrel{\text{def}}{=}  \frac{1}{n} \sum_{i=1}^n |x_i -m_m|$$
+
+$$\textsf{MED}_n \stackrel{\text{def}}{=} \textsf{MEDIANE} \left( |x_i -m_m|\right)_{1 \leq i\leq n}$$
+
+```{r}
+#| eval: true
+#| echo: false
+q_count <- 1
+```
+
+::: {.callout-note}
+
+### `r glue::glue("Question {q_count}")`
+```{r}
+#| code: "q_count <-  q_count + 1"
+```
+
+Quelles sont assertions correctes ?
+
+1. $F_n \circ F_n^{\leftarrow}(p) =p \qquad \forall p \in (0,1)$
+2. $F_n \circ F_n^{\leftarrow}(p) \geq p \qquad \forall p \in (0,1)$
+3. $F^{\leftarrow}_n \circ F_n(x) \geq x \qquad \forall x \in \mathbb{R}$
+4. $\left|F^{\leftarrow}_n \circ F_n(x)- x\right|\leq \frac{1}{n} \qquad \forall x \in \mathbb{R}$
+
+:::
+
+::: {.content-visible when-profile="solution"}
+::: {.callout-tip title="Solution"}
+
+1. Faux.  $F_n \circ F_n^{\leftarrow}$ prend ses valeurs dans $i/n, i \in 1, \ldots,n$
+2. Vrai. 
+3. Faux. $F^{\leftarrow}_n \circ F_n(x) \leq x \qquad \forall x \in \mathbb{R}$
+4. Faux. Pour $x > x_{n:n}$, $\left|F^{\leftarrow}_n \circ F_n(x)- x\right|= x - x_{n:n}$ qui peut être arbitrairement grand.
+
+
+:::
+:::
+
+
+::: {.callout-note}
+
+### `r glue::glue("Question {q_count}")`
+```{r}
+#| eval: true
+#| code: "q_count <-  q_count + 1"
+```
+
+Si on fait subir une transformation affine à l'échantillon $x_i \mapsto a x_i +b$ pour tout $i\leq n$ , avec $a>0$, que deviennent   $\textsf{MAD}_n$ et $\textsf{MED}_n$ ?
+
+:::
+
+::: {.content-visible when-profile="solution"}
+::: {.callout-tip title="Solution"}
+
+Si on fait subir une transformation affine à un échantillon, on fait subir la même transformation affine à toutes les statistiques d'ordre. 
+
+- On multiplie $\textsf{MAD}_n$ par $a$ (changement d'échelle)
+- On multiplie $\textsf{MED}_n$ par $a$ (changement d'échelle)
+
+
+
+:::
+:::
+
+::: {.callout-note}
+
+### `r glue::glue("Question {q_count}")`
+```{r}
+#| code: "q_count <-  q_count + 1"
+```
+
+Donner une expression de $\textsf{MAD}_n$ en fonction des statistiques d'ordre, sans valeur absolue.
+
+:::
+
+
+::: {.content-visible when-profile="solution"}
+::: {.callout-tip title="Solution"}
+
+Comme $n=4k+3$, si les points de l'échantillon sont deux à deux distincts:
+$m_n = x_{2k+2:n}$
+
+$$
+\begin{aligned}
+\textsf{MAD}_n 
+  & \stackrel{\text{def}}{=}  \frac{1}{n} \sum_{i=1}^n \left| x_i - m_n \right| \\
+  & = \frac{1}{n} \sum_{i=1}^n \left| x_{i:n} - x_{2k+2:n} \right| \\
+  & = \frac{1}{n}\sum_{i=1}^{2k+1} x_{2k+2:n} - x_{i:n}  + \frac{1}{n}\sum_{i=2k+3}^{4k+3} x_{i:n} - x_{2k+2:n} \\
+  & = \frac{1}{n} \sum_{i=1}^{2k+1} x_{4k+4-i:n} - x_{i:n}
+\end{aligned}
+$$
+
+Cette expression permet de comparer $\textsf{MAD}_n$ à l'écart inter-quartile $\textsf{IQR} = x_{3k+3:n} - x_{k+1:n}$
+
+$$
+\begin{aligned}
+\textsf{MAD}_n
+ & \geq \frac{1}{n} \sum_{i=1}^{k+1} x_{4k+4-i:n} - x_{i:n} \\
+ & \geq \frac{k+1}{n} x_{3k+3:n} - x_{k+1:n} \\
+ & = \frac{k+1}{4k+3} \textsf{IQR} \\
+ & \geq \frac{1}{4} \textsf{IQR}
+\end{aligned}
+$$
+
+:::
+:::
+
+
+
+::: {.callout-note}
+
+### `r glue::glue("Question {q_count}")`
+```{r}
+#| code: "q_count <-  q_count + 1"
+```
+
+En supposant que vous disposez déjà de l'échantillon trié (des statistiques d'ordre), proposez un algorithme de calcul de $\textsf{MED}_n$. 
+
+Ne pas écrire de pseudo-code, de `R` ou de `Python`. L'idée de l'algorithme suffit.
+
+:::
+
+::: {.content-visible when-profile="solution"}
+::: {.callout-tip title="Solution"}
+
+Le problème se ramène à rechercher une médiane dans un tableau doit la première moitié est triée en ordre croissant et la seconde en ordre décroissant. 
+
+Une solution simple à mettre en oeuvre consiste à adapter l'algorithme de fusion de suites triées (utilisé dans le tri fusion/*mergesort*).
+
+Une solution plus ambitieuse consiste à adpater l'idée  de la recherche dichotomique: on compare les écarts des premiers et troisièmes quartiles à la médiane, Cela permet d'éliminer la moitié des candidats. On réitère le découpage. 
+
+
+
+
+
+:::
+:::
+
+
+::: {.callout-note}
+
+### `r glue::glue("Question {q_count}")`
+```{r}
+#| code: "q_count <-  q_count + 1"
+```
+
+Quel est l'ordre de grandeur du nombre de comparaisons effectuées par votre algorithme (Question précédente) ?   
+
+
+
+:::
+
+::: {.content-visible when-profile="solution"}
+::: {.callout-tip title="Solution"}
+
+L'algorithme de fusion demande au pire et au mieux un nombre linéaire de comparaisons.
+
+L'algorithme dérivé de la recherche dichotomique demande au pire et au mieux un nombre logarithmique de comparaisons 
+
+:::
+:::
+
+::: {.content-hidden when-profile="solution"}
+
+
+```{r}
+#| eval: true
+#| echo: true
+#| warning: false
+#| message: false
+epsilon <- .0001
+k <- 1000
+n <-  4 * k + 3
+
+x <- rep(c(-1, 0, 1), c(k+1, 2*k+1 ,k+1))
+x <- x + sign(x) * epsilon * abs(rnorm(n))
+x <- sort(x)
+
+qq <- quantile(x, probs =seq(1,3)/4, type = 1 ,names = T)
+# qq <- x[c(k+1,2*k+2, 3*k+3) ]
+# qq
+
+# 4*sum(abs(x -qq[2]))/(n*(qq[3]-qq[1])) 
+4*sum(abs(x -qq[2]))/(n*(IQR(x, type=1))) 
+
+sqrt(2) * sd(x)/IQR(x, type=1)
+
+df <- tibble::as_tibble(x=x)
+
+ok <- require(tidyverse, quietly = T, warn.conflicts = F)
+okk <- require(patchwork)
+
+p1 <- df %>%
+  ggplot() +
+  aes(x=x) +
+  stat_density(aes(y=after_stat(density)), adjust = 1/10) +
+  ggtitle("Estimation de densité")
+
+p2 <- df %>%
+  ggplot() +
+  aes(x=x) +
+  stat_ecdf() +
+  ggtitle("Fonction de répartition empirique")
+
+p1 + p2
+```
+
+:::
+
+
+# Régression 
+
+
+Dans cet exercice, $\mathbb{X}$ est une matrice réelle à $n$ lignes et $p$ colonnes ($n \geq p$). On note $r$ le rang  de  $\mathbb{X}$  ($0\leq r \leq p \leq n$). $\mathbf{y} \in \mathbb{R}^n$ est manipulé comme un vecteur colonne.
+
+La matrice $\mathbb{X}$ est une matrice *design*. On s'intéresse aux vecteurs $\theta \in \mathbb{R}^p$  qui minimisent le critère des moindre carrés:
+
+$$\| \mathbf{y} - \mathbb{X} \theta\|^2_2 = \sum_{i=1}^n \left(\mathbf{y}_i - \sum_{j=1}^p \mathbb{X}_{i,j}\theta_j \right)^2$$
+
+On note $\widehat{\Theta}$ l'ensemble des minimisants.
+
+::: {.callout-note}
+
+### `r glue::glue("Question {q_count}")`
+```{r}
+#| code: "q_count <-  q_count + 1"
+```
+
+1. $\widehat{\Theta}$ est-il toujours non-vide ?
+2. À quelle condition $\widehat{\Theta}$ est-il formé d'un unique élément?
+
+:::
+
+::: {.content-visible when-profile="solution"}
+
+::: {.callout-tip title="Solution"}
+
+1. $\widehat{\Theta}$ est toujours non vide. Tout $\theta$ tel que $\mathbb{X}\theta$ soit égal à la projection orthogonale de $\mathbf{y}$ sur le SEV engendré par les colonnes de $\mathbb{X}$ appartient à $\widehat{\Theta}$. 
+2. $\widehat{\Theta}$ est réduit à un seul élément lorsque la matrice *design*  $\mathbb{X}$  est rang $p$ 
+
+
+:::
+:::
+
+::: {.callout-note}
+
+### `r glue::glue("Question {q_count}")`
+```{r}
+#| code: "q_count <-  q_count + 1"
+```
+
+Soit $\mathbb{Z}$ une matrice à $p$ lignes et $n$ colonnes qui vérifierait:
+
+a. $\mathbb{X} \times \mathbb{Z} \times \mathbb{X} = \mathbb{X}$
+b. $\mathbb{Z} \times \mathbb{X} \times \mathbb{Z} = \mathbb{Z}$
+c. $(\mathbb{Z} \times \mathbb{X})^\top = \mathbb{Z} \times \mathbb{X}$
+d. $(\mathbb{X} \times \mathbb{Z})^\top = \mathbb{X} \times \mathbb{Z}$
+
+Si une telle matrice $\mathbb{Z}$ existe
+
+1. Est-elle unique ?
+2. A-t-on $\mathbb{Z} \mathbf{y} \in \widehat{\Theta}$ ?
+3. Quelles sont les valeurs propres de $\mathbb{Z} \times \mathbb{X}$ ?
+4. Quelles sont les valeurs propres de $\mathbb{X} \times \mathbb{Z}$ ?
+5. Décrire $\widehat{\Theta}$ à l'aide de $\mathbf{y}, \mathbb{Z}, \textsf{Ker}\mathbb{X}$
+6. Quels sont les éléments de norme minimale de  $\widehat{\Theta}$? 
+
+:::
+
+
+::: {.content-visible when-profile="solution"}
+
+
+::: {.callout-tip title="Solution"}
+Une matrice qui vérifie les conditions a)-d) est  appelée pseudo-inverse de Moore-Penrose de $\mathbb{X}$
+
+Si une matrice $\mathbb{Z}$ vérifiant a)-d) existe, on peut proposer les deux observations suivantes.
+
+En combinant a) et c), on remarque que $\mathbb{X} \times \mathbb{Z}$ est symétrique et idempotente. C'est une matrice de projection orthogonale. Cette matrice laisse les colonnes de $\mathbb{X}$ invariantes, et l'espace image associé est engendré par les colonnes de $\mathbb{X}$. $\mathbb{X} \times \mathbb{Z}$  est la matrice de projection orthogonale sur le SEV de $\mathbb{R}^n$ engendré par les colonnes de $\mathbb{X}$.
+
+En partant de b) et d), on remarque par le même raisonnement que $\mathbb{Z} \times \mathbb{X}$ est la matrice de projection orthogonale sur le SEV  de $\mathbb{R}^p$ engendré par  
+les colonnes de $\mathbb{Z}$. C'est aussi la matrice  de projection orthogonale sur le SEV  de $\mathbb{R}^p$ engendré par   les lignes  de $\mathbb{X}$.
+
+$$\begin{aligned}
+\| \mathbf{y} - \mathbb{X} \theta\|^2_2 
+ & = \| \mathbf{y} - \mathbb{X}\mathbb{Z} \mathbf{y} \|^2_2  + \| \mathbb{X}\mathbb{Z} \mathbf{y} - \mathbf{X} \theta\|^2_2  
+\end{aligned}$$
+
+Un minimisant du membre gauche est de la forme $\theta = \mathbb{Z} \mathbf{y}$. Et tout autre minimisant vérifie $0 = \mathbb{X} \times (\mathbb{Z} \mathbf{y} + \theta)$, soit $\mathbb{Z} \mathbf{y} + \theta \in \text{Ker}(\mathbb{X})$, autrement dit $\widehat{\Theta}= \mathbb{Z} \mathbf{y} +  \text{Ker}(\mathbb{X})$ avec 
+$\mathbb{Z} \mathbf{y} \in \text{Ker}(\mathbb{X})^{\bot}$
+
+:::
+
+::: {.callout-tip title=""}
+
+L'unicité de la pseudo-inverse de Moore-Penrose peut se vérifier ainsi. Supposons que $\mathbb{Z}$  et $\mathbb{Y}$ verifient a)-d)
+
+$$
+\begin{aligned}
+\mathbb{Z} 
+  & = \mathbb{Z} \mathbb{X} \mathbb{Z}  \qquad & \text{b)}\\
+  & = \mathbb{Z} (\mathbb{X} \mathbb{Z})^\top \qquad & \text{d)}\\
+  & = \mathbb{Z}  \mathbb{Z}^\top \mathbb{X}^\top &  \\
+  & = \mathbb{Z}  \mathbb{Z}^\top (\mathbb{X} \mathbb{Y} \mathbb{X})^\top \qquad & \text{a)} \\
+  & = \mathbb{Z}  (\mathbb{X} \mathbb{Z})^\top (\mathbb{X} \mathbb{Y})^\top & \\
+  & = \mathbb{Z} \mathbb{X} \mathbb{Z} \mathbb{X} \mathbb{Y} \qquad & \text{c) et d)}\\
+  & = \mathbb{Z} \mathbb{X} \mathbb{Y} \qquad & \text{a)}\\
+  & = (\mathbb{Z} \mathbb{X})^\top \mathbb{Y} \mathbb{X} \mathbb{Y} & \text{c) et b)}\\
+  & = \mathbb{X}^\top \mathbb{Z}^\top (\mathbb{Y} \mathbb{X})^\top \mathbb{Y} & \text{c)} \\
+  & = (\mathbb{X} \mathbb{Y} \mathbb{X})^\top \mathbb{Z}^\top \mathbb{X}^\top\mathbb{Y}^\top  \mathbb{Y} & \text{a)}\\
+  & = (\mathbb{Y} \mathbb{X})^\top \mathbb{X}^\top \mathbb{Z}^\top \mathbb{X}^\top\mathbb{Y}^\top  \mathbb{Y} & \\
+  & = (\mathbb{Y} \mathbb{X})^\top \mathbb{X}^\top \mathbb{Y}^\top  \mathbb{Y} & \text{a)}\\
+  & =   (\mathbb{X}\mathbb{Y} \mathbb{X})^\top \mathbb{Y}^\top  \mathbb{Y}&  \\
+  & = \mathbb{X}^\top \mathbb{Y}^\top  \mathbb{Y} & \text{a)} \\
+  & = (\mathbb{Y} \mathbb{X})^\top \mathbb{Y} & \\
+  & = \mathbb{Y} \mathbb{X}  \mathbb{Y} & \text{c)}\\
+  & = \mathbb{Y} & \text{b)}
+\end{aligned}
+$$
+
+:::
+
+::: {.callout-tip title=""}
+
+1. Oui.    
+2. Oui. $\mathbb{X} \times \mathbb{Z} \mathbf{y}$  est la projection  orthogonale de $\mathbf{y}$ sur le SEV engendré par les colonnes de $\mathbb{X}$. 
+3. $\mathbb{Z} \times \mathbb{X}$ est la matrice de projection  orthogonale sur le SEV engendré par les lignes de $\mathbb{X}$. Les valeurs propres sont $1$ (multiplicité: la dimension du SEV engendré par les lignes  de $\mathbb{X}$, soit le rang de $\mathbb{X}$) et $0$.
+4. $\mathbb{X} \times \mathbb{Z}$ est la matrice de projection  orthogonale sur le SEV engendré par les colonnes de $\mathbb{X}$. Les valeurs propres sont $1$ (multiplicité: la dimension du SEV engendré par les colonnes de $\mathbb{X}$, soit encore le rang de $\mathbb{X}$) et $0$.
+5. $\widehat{\Theta} = \mathbb{Z} \times \mathbf{y} + \textsf{Ker}\mathbb{X}$.  
+6. Si $\mathbf{u} \in \widehat{\Theta}$, $\mathbf{u} =  \mathbb{Z} \times \mathbf{y} + \mathbf{v}$ avec $\mathbf{v} \in \textsf{Ker}\mathbb{X}$, ce qui implique $\mathbf{v} \bot \mathbb{Z}\mathbf{y}$, donc $\|\mathbf u\|_2^2=\|\mathbb{Z} \mathbf{y}\|_2^2 + \|\mathbf{v}\|_2^2$.   $\mathbb{Z} \times \mathbf{y}$  est de norme euclidienne minimale dans $\widehat{\Theta}$.
+
+
+Voir [Inverse de Moore-Penrose](https://en.wikipedia.org/wiki/Moore–Penrose_inverse)
+
+:::
+:::
+
+{{< pagebreak >}}
+

@@ -1,0 +1,469 @@
+---
+jupyter: python3
+---
+
+
+
+# Propaganda, start the `spark` session
+
+> For SQL users, Spark SQL provides state-of-the-art SQL performance and maintains compatibility with Shark/Hive. In particular, like Shark, Spark SQL supports all existing Hive data formats, user-defined functions (UDF), and the Hive metastore.
+
+> For Spark users, Spark SQL becomes the narrow-waist for manipulating (semi-) structured data as well as ingesting data from sources that provide schema, such as JSON, Parquet, Hive, or EDWs. It truly unifies SQL and sophisticated analysis, allowing users to mix and match SQL and more imperative programming APIs for advanced analytics.
+
+> For open source hackers, Spark SQL proposes a novel, elegant way of building query planners. It is incredibly easy to add new optimizations under this framework.
+
+> Internally, a structured query is a Catalyst tree of (logical and physical) relational operators and expressions.
+
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T14:21:05.390606Z', start_time: '2020-03-09T14:21:04.705930Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# import the usual suspects
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+from pathlib import Path
+import sys
+import timeit
+
+%matplotlib inline
+import seaborn as sns
+
+sns.set_context("notebook", font_scale=1.2)
+```
+
+During the session, we will use classes and functions exported by `pyspark`
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T14:21:05.433036Z', start_time: '2020-03-09T14:21:05.393040Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# spark
+from pyspark import SparkConf, SparkContext
+from pyspark.sql import SparkSession
+from pyspark.sql import Window
+from pyspark.sql.functions import col
+import pyspark.sql.functions as fn
+from pyspark.sql.catalog import Catalog
+from pyspark.sql.types import StructType, StructField
+from pyspark.sql.types import IntegerType, StringType
+```
+
+Start the `SparkSession`
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T14:21:08.198302Z', start_time: '2020-03-09T14:21:05.450757Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+conf = SparkConf().setAppName("Spark SQL Illustrations")
+sc = SparkContext(conf=conf)
+
+spark = (SparkSession
+    .builder
+    .appName("Spark SQL")
+    .getOrCreate()
+)
+```
+
+US Baby Names 1880-2017
+=======================
+
+
+Description
+: US baby names provided by the SSA. 
+
+This dataset contains all names used
+for at least 5 children of either sex during a year. 
+
+
+The file is made of `1924665` lines and  4 columns.
+
+```
+|-- name: string (nullable = true)
+    |-- n: integer (nullable = true)
+    |-- sex: string (nullable = true)
+    |-- year: integer (nullable = true)
+```
+
+Each row indicates for a given name, sex, and year the number of babies 
+of the given sex who were given that name during the given year. Names 
+with less than 5 occurrences during the year were note recorded. 
+
+|    name|  n|sex|year|
+|:--------|:---:|:---:|:----:|
+|  Emilia|112|  F|1985|
+|   Kelsi|112|  F|1985|
+|  Margot|112|  F|1985|
+|  Mariam|112|  F|1985|
+|Scarlett|112|  F|1985|
+
+First, we download the data if it's not there yet
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-17T14:34:52.211940Z', start_time: '2020-03-17T14:34:52.017286Z'}
+import requests, zipfile, io
+from pathlib import Path
+
+path = Path('babynames_short.csv')
+if not path.exists():
+    url = "https://stephanegaiffas.github.io/big_data_course/data/babynames_short.csv.zip"
+    r = requests.get(url)
+    z = zipfile.ZipFile(io.BytesIO(r.content))
+    z.extractall(path='./')
+```
+
+Load `babynames` from a `csv` file
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T14:21:15.599687Z', start_time: '2020-03-09T14:21:09.892952Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+#| scrolled: false
+df_sp = spark.read\
+             .format('csv')\
+             .option("header", "true")\
+             .option("mode", "FAILFAST")\
+             .option("inferSchema", "true")\
+             .option("sep", ",")\
+             .load("babynames_short.csv")
+
+df_sp.printSchema()
+```
+
+
+Ensure that the dataframe has the following schema:
+
+    root
+        |-- name: string (nullable = true)
+        |-- n: integer (nullable = true)
+        |-- sex: string (nullable = true)
+        |-- year: integer (nullable = true)
+
+
+
+
+SQL versus spark-Dataframe API
+=================================
+
+>  Dataset API vs SQL
+
+> Spark SQL supports two "modes" to write structured queries: Dataset API and SQL. SQL Mode is used to express structured queries using SQL statements using SparkSession.sql operator, expr standard function and spark-sql command-line tool.
+
+> Some structured queries can be expressed much easier using Dataset API, but there are some that are only possible in SQL. In other words, you may find mixing Dataset API and SQL modes challenging yet rewarding.
+
+> What is important, and one of the reasons why Spark SQL has been so successful, is that there is no performance difference between the modes. Whatever mode you use to write your structured queries, they all end up as a tree of Catalyst relational data structures. And, yes, you could consider writing structured queries using Catalyst directly, but that could quickly become unwieldy for maintenance (i.e. finding Spark SQL developers who could be comfortable with it as well as being fairly low-level and therefore possibly too dependent on a specific Spark SQL version).
+
+Warmup:  compute the 10 most popular names given to babies in year 2000.
+======================================================================
+
+## Using `spark.sql()`
+
+In order to use mode `sql`, create a temporary view from the `DataFrame`.
+
+1. What are temporary views made of?
+1. Are there other kind of views in spark's world?
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:24:46.182881Z', start_time: '2020-03-09T13:24:46.097978Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+Catalog(spark).listTables()
+```
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:24:47.506183Z', start_time: '2020-03-09T13:24:47.433521Z'}
+# TODO: 
+
+Catalog(spark).listTables()
+```
+
+
+## A query is a plain SQL query embodied in a string.
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:24:51.637337Z', start_time: '2020-03-09T13:24:51.633088Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+query = """TODO: """
+
+# spark.sql(query)
+```
+
+
+> This phrasing is not consistent with the DRY principle. Fix this using formatted strings.
+
+## Using the dataframe/dataset API
+
+This can also be done using Spark SQL API.
+
+### Pedestrian approach
+
+1. First select `10` most popular names for girls in year `2000`, define `spark` dataframe
+`top10_2000_f`.
+1. Does the definition of `top10_2000_f` involve _transformations_, _actions_ or both?
+1. What is the type of the result returned by `top10_2000_f.take(2)`? the type of elements of the result?
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:24:55.503493Z', start_time: '2020-03-09T13:24:55.499582Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# top10_2000_f = TODO:
+```
+
+
+1. Do the same thing for boys.
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:24:55.990063Z', start_time: '2020-03-09T13:24:55.985300Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# top10_2000_m = TODO:
+```
+
+
+1. Compute the _union_ of the two spark dataframes. Store the result in
+dataframe `top10_2000`
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:24:56.565469Z', start_time: '2020-03-09T13:24:56.561072Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# top10_2000 = TODO:
+```
+
+
+### Do it again, complying  with DRY principle
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:24:57.142207Z', start_time: '2020-03-09T13:24:57.139678Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# TODO:
+```
+
+
+
+Name portfolio through ages
+===========================
+
+1. Compute for each year and sex the number of distinct names given that year.
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:24:57.707985Z', start_time: '2020-03-09T13:24:57.705093Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# nb_names_year_sex = TODO: 
+```
+
+
+1. Plot the evolution of the number of distinct names as a function of `year`.
+Use some aesthetics to distinguish sexes.
+
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:24:58.841340Z', start_time: '2020-03-09T13:24:58.838607Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# TODO:
+```
+
+
+
+Assessing popularity through time
+=================================
+
+1. For each year and sex, compute the total number of births
+1. Plot the evolution of the sex ratio over time
+1. For each year, sex, and name compute the percentage of newborns
+given that name for that given year.
+
+
+> Use `Window` functions.
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:24:59.635054Z', start_time: '2020-03-09T13:24:59.632434Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# TODO:
+```
+
+
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:24:59.913962Z', start_time: '2020-03-09T13:24:59.911037Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# %%
+# TODO: plot sex ratio
+# %%
+```
+
+
+1. Compute for each year, sex and name  the `row_number`, `rank`, and `dense_rank`
+of the name within that year and sex category, when names are sorted by increasing popularity.
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:25:00.180831Z', start_time: '2020-03-09T13:25:00.177889Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# TODO:
+```
+
+
+
+
+Evolution of top popular names through the century
+==================================================
+
+
+1. For each sex, select the ten most popular names in year 2000, and plot the proportion
+of newborns given that name over time. Take into account that some names might have
+zero occurrence during certain years.
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:25:00.429980Z', start_time: '2020-03-09T13:25:00.427263Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# TODO:
+```
+
+
+1. Use `explain()` to determine the joining strategy used by spark.
+
+
+Plot  the popularity of each of the top ten achievers from year 2000 with respect to time
+==================================================================================
+
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:25:00.680650Z', start_time: '2020-03-09T13:25:00.677469Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# %%
+# TODO:
+# %%
+```
+
+
+
+Plot the total popularity of the top ten achievers from year 2000 with respect to time
+==================================================================================
+
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:25:00.924571Z', start_time: '2020-03-09T13:25:00.917339Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# %%
+# TODO:
+# %%
+```
+
+
+
+Plot lorenz curves
+=====================
+
+Every year, the name counts define a discrete probability distribution.
+This distribution, just as income or wealth distribution,
+is (usually) far from being uniform. We want to assess how uneven it is.
+We use the tools developed in econometrics.
+
+Without loss of generality, that we handle a distribution over $1, \ldots, n$
+where $n$ is the number of distinct names given during a year.
+We assume that frequencies $p_1, p_2, \ldots, p_n$ are given in ascending order.
+
+The Lorenz function maps $[0, 1] \to [0, 1]$.
+$$L(x) = \sum_{i=1}^{\lfloor nx \rfloor} p_i$$.
+
+1. Design a query that adds a column "lorenz" to the dataframe , and for each
+row computes the value of the Lorenz function defined by `year`  and `sex`.
+
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:25:01.172487Z', start_time: '2020-03-09T13:25:01.169864Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# TODO:
+```
+
+
+
+1. Design a function that takes as input a `year` and plots the Lorenz curve
+for that year for both sexes.
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:25:01.435478Z', start_time: '2020-03-09T13:25:01.432499Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# %%
+# TODO:
+# %%
+```
+
+
+Gini index
+==========
+
+The [Gini index](https://en.wikipedia.org/wiki/Gini_coefficient) is twice the surface of the area comprised between curves $y=x$
+and $y=L(x)$.
+
+Choose a formula that allows you to compute it efficiently.
+
+$$G={\frac {2\sum _{i=1}^{n}iy_{i}}{n\sum _{i=1}^{n}y_{i}}}-{\frac {n+1}{n}}.$$
+
+1. Design a query that computes the Gini index of the `babynames` distribution
+for every `year` and `sex`.
+
+1. Plot Gini index over time
+
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:25:01.689514Z', start_time: '2020-03-09T13:25:01.686509Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# TODO:
+```
+
+
+
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:25:01.959724Z', start_time: '2020-03-09T13:25:01.957043Z'}
+#| autoscroll: auto
+#| options: {caption: false, complete: true, display_data: true, display_stream: true, dpi: 200, echo: true, evaluate: false, f_env: null, f_pos: htpb, f_size: [6, 4], f_spines: true, fig: true, include: true, name: null, option_string: evaluate=False, results: verbatim, term: false, wrap: output}
+# %%
+# TODO:
+# %%
+```
+
+
+
+
+Close the door, leave work area clean
+=====================================
+
+```{python}
+#| ExecuteTime: {end_time: '2020-03-09T13:25:02.615664Z', start_time: '2020-03-09T13:25:02.216564Z'}
+spark.stop()
+```
+

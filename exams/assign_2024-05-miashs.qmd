@@ -1,0 +1,148 @@
+---
+format:
+  html:
+    output-file: prep-est-miashs-2024.html
+  pdf:
+    output-file: prep-est-miashs-2024.pdf
+
+execute: 
+  eval: true
+  echo: false
+  collapse: true
+  
+  
+params:
+  truc: html
+  year: 2023 
+  curriculum: "L3 MIASHS"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/isidata"
+  moodle: ""
+
+engine: knitr
+---
+
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+**Science des Données: Préparation EST du 2024-05-23**
+
+- **`r glue::glue('{params$curriculum}')`** 
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- 2024-04-24  
+
+:::
+
+::: {#second-column}
+
+
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){style="float:right; size: 50px;"
+width="132"}
+
+
+:::
+
+:::
+
+
+Dans la suite, la taille de l'échantillon numérique
+$$x_1, x_2, \ldots, x_n$$ 
+est $n=4k +3$ avec $k>1$. 
+
+Les valeurs $x_1, \ldots, x_n$ sont supposées deux à deux distinctes. Les *statistiques d'ordre* sont notées 
+$$x_{1:n} < x_{2:n} < \ldots < x_{n:n}$$
+
+On note $\overline{X}_n = \frac{1}{n} \sum_{i=1}^n x_i$ la moyenne empirique de l'échantillon, et $m_n=x_{2k+2:n}= x_{\lfloor n/2\rfloor+1:n}$ la médiane empirique de l'échantillon. 
+
+On note la fonction de répartition empirique $F_n$ :
+$$F_n(x) = \frac{1}{n} \sum_{i=1}^n \mathbb{I}_{x_i \leq x}$$
+et la fonction quantile $F_n^{\leftarrow}$ :
+$$F_n^{\leftarrow}(p) = \inf \left\{y : y \in \mathbb{R}, \quad F_n(y)\geq p \right\} $$
+
+On définit de plus:
+$$\textsf{MAD}_n \stackrel{\text{def}}{=}  \frac{1}{n} \sum_{i=1}^n |x_i -m_m|$$
+
+$$\textsf{MED}_n \stackrel{\text{def}}{=} \textsf{MEDIANE} \left( |x_i -m_m|\right)_{1 \leq i\leq n}$$
+
+et 
+
+$$
+\widehat{\textsf{sd}}_n \stackrel{\text{def}}{=} \sqrt{\frac{1}{n} \sum_{i=1}^n |x_i -\overline{X}_n|^2}$$
+
+
+::: {.callout-note}
+
+### Statistiques descriptives univariées 
+
+- Exprimer les quartiles en fonction  des statistiques d'ordre 
+- Est-il toujours vrai que $\textsf{MAD}_n \leq \widehat{\text{sd}}_n$ ? 
+- Est-il vrai que $\textsf{MAD}_n$ peut s'écrire comme une combinaison linéaire des statistiques d'ordre ?
+- Selon vous, existe-t-il une constante $\kappa$ telle que  $\textsf{MAD}_n \leq \kappa \textsf{IQR}$ ?
+Selon vous, existe-t-il une constante $\kappa$ telle que  $\textsf{MAD}_n \geq \kappa \textsf{IQR}$ ?
+
+:::
+
+
+
+
+::: {.callout-note}
+
+### Fonction de répartition/Fonction de quantile/Fonction de survie
+
+
+- Si $- \log \overline{F}$ est convexe, le taux de hasard est croissant ? (Vrai/Faux)
+- Le taux de hasard d'une loi de Poisson est croissant ?
+- Le taux de hasard d'une loi géomérique est croissant ?
+- Le taux de hasard d'une loi de Pareto ($\overline{F}_{\tau, \gamma}(x)= (x/\tau)^{-1/\gamma}$ pour $x>\tau$, $\gamma,\tau>0$) est croissant ?
+- Le taux de hasard définit la fonction de répartition ?
+- Le taux de hasard définit la loi de probabilité  ?
+
+:::
+
+::: {.callout-note}
+
+### Démographie
+
+1. L'espérance de vie à la naissance dépend de la structuration en âge de la population (Vrai/Faux)
+2. Pour une année et une population donnée, l'espérance de vie résiduelle décroit avec l'âge (Vrai/Faux)
+3. Si on connaît l'espérance de vie à la naissance dans deux populations disjointes et la taille de ces deux populations, on peut obtenir l'espérance de vie à la naissance dans la réunion de ces deux populations en calculant la moyenne pondérée des espérances de vie à la naissance.
+4. Si on connaît toutes les espérances de vie résiduelles dans une population, on peut calculer les quotients de mortalité dans cette population.   
+5. L'espérance de vie à la naissance coïncide avec l'age moyen du décès observé dans la population. 
+6. Quelle est la dérivée de l'espérance de vie à la naissance par rapport au quotient de mortalité à l'age $x$?
+7. Le taux de mortalité brut est-il une fonction des quotients de mortalité ?
+   
+
+:::
+
+ 
+
+::: {.callout-note}
+
+### Fonction de Lorenz/Indices d'inégalité
+
+Voir [Lab *Prénoms*](https://stephane-v-boucheron.fr/labs/scidon/_handout/lab-babynames.html)
+
+- Si $p_1, \ldots, p_n$ désigne une fonction de masse (densité) d'une loi de probabilité sur un univers à $n$ éléments, quelle est la valeur de $(p_1, 
+\ldots, p_n)$ qui minimise $\sum_{i=1}^n p_i^2$ ? Quelle est valeur du minimum  de $\sum_{i=1}^n p_i^2$?
+- Si $p_1, \ldots, p_n$ désigne une fonction de masse (densité) d'une loi de probabilité sur un univers à $n$ éléments, quelle est la valeur de $(p_1, \ldots, p_n)$ qui minimise la probailité que si on effectue deux tirages indépendants selon la loi définie par $(p_1, \ldots, p_n)$, on obtienne deux résultats identiques ?
+- Si $L$  est la fonction/courbe de Lorenz d'une distribution de probabilité, alors, Si $u, v, w$ sont trois points de $I=[0,1]$ tels que $u < v < w$, on a 
+$$\frac{L(v) − L(u)}{v − u} ≤ \frac{L(w) − L(u)}{w-u}  ≤ \frac{L(w) − L(v)}{w − v}$$
+
+:::
+
+
+
+  
+
+::: {.content-visible when-profile='solution'} 
+ 
+ 
+:::
+
+
+
+
+

@@ -1,0 +1,74 @@
+---
+# title: "LAB: datavis"
+format:
+  html:
+    output-file: lab-report-census.html
+  pdf:
+    output-file: lab-report-census.pdf
+
+execute: 
+  eval: true
+  echo: fenced
+  collapse: true
+  
+  
+params:
+  truc: html
+  year: 2024 
+  curriculum: "M1 MIDS & MFA"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/eda"
+  moodle: ""
+---
+
+```{r}
+#| include: false
+```
+
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+{{< meta title >>}}
+
+- **`r stringr::str_glue('{params$curriculum}')`**
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- `r stringr::str_glue("[Course Homepage]({params$homepage})")`  
+- `r stringr::str_glue("[Moodle]({params$moodle})")`
+
+::: 
+
+::: {#second-column}
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
+:::
+
+:::
+
+
+<!-- We will use the following packages. If needed, we install them. -->
+
+```{r}
+#| label: setup-packages
+#| warning: false
+#| message: false
+#| echo: false
+
+to_be_loaded <- c("tidyverse", 
+                  "patchwork", 
+                  "glue", 
+                  "ggforce", 
+                  "plotly",
+                  "ggthemes",
+                  "skimr",
+                  "cowplot",
+                  "ggrepel")
+
+for (pck in to_be_loaded) {
+  if (!require(pck, character.only = T)) {
+    install.packages(pck, repos="http://cran.rstudio.com/")
+    stopifnot(require(pck, character.only = T))
+  }  
+}
+```

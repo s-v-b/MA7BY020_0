@@ -1,0 +1,528 @@
+---
+date: "`r Sys.time()`"
+
+execute:
+  echo: true
+  eval: true
+  collapse: true
+
+format:
+  html:
+    output-file: lab-test-miashs-2.html
+  pdf:
+    output-file: lab-test-miashs-2.pdf
+
+engine: knitr
+# server: shiny
+---
+
+```{r}
+params = list(
+  truc= "Science des Données",
+  year= 2023 ,
+  curriculum= "L3 MIASHS",
+  university= "Université Paris Cité",
+  homepage= "https://stephane-v-boucheron.fr/courses/scidon",
+  moodle= "https://moodle.u-paris.fr/course/view.php?id=13227",
+  path_data = './DATA',
+  country_code= '...',
+  country= '...',
+  datafile= '...'
+  )
+
+attach(params)
+```
+
+```{r}
+#| include: true
+#| message: false
+#| warning: false
+require(patchwork)
+require(glue)
+require(here)
+require(tidyverse)
+require(vcd)
+require(vcdExtra)
+require(ggmosaic)
+require(skimr)
+require(plotly)
+require(DT)
+require(GGally)
+require(ggforce)
+require(ggfortify)
+
+tidymodels::tidymodels_prefer(quiet = TRUE)
+
+old_theme <-theme_set(theme_minimal(base_size=9, base_family = "Helvetica"))
+```
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+
+
+- **`r stringr::str_glue('{params$curriculum}')`**
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- `r stringr::str_glue("[Course Homepage]({params$homepage})")`  
+- `r stringr::str_glue("[Moodle]({params$moodle})")`
+
+::: 
+
+::: {#second-column}
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
+:::
+
+:::
+
+
+```{r}
+#| label: setup
+#| warning: false
+#| message: false
+#| echo: true
+
+
+```
+
+
+## Confidence Intervals
+
+We start with Confidence Intervals in a simple Gaussian setting. We have $X_1, \ldots, X_n \sim_{i.i.d.} \mathcal{N}(\mu, \sigma^2)$ where 
+$\mu$ and $\sigma$ are unknown (to be estimated and/or tested).
+
+The maximum likelihood estimator for $(\mu, \sigma^2)$ is $(\overline{X}_n, \widehat{\sigma}^2)$ where 
+
+$$\overline{X}_n =\sum_{i=1}^n \frac{1}{n} X_i\quad\text{and}\quad \widehat{\sigma}^2=\frac{1}{n}\sum_{i=1}^n (X_i - \overline{X}_n)^2$$
+By Student's Theorem $\overline{X}_n$  and $\widehat{\sigma}^2$ are stochastically independent $\overline{X}_n \sim \mathcal{N}(\mu, \widehat{\sigma}^2/n)$ 
+and $n \widehat{\sigma}^2/\sigma^2 \sim \chi^2_{n-1}$.
+
+$$\sqrt{n} \frac{\overline{X}_n - \mu}{\widehat{\sigma}} \sim t_{n-1}$$ 
+
+where $t_{n-1}$ denotes the Student's $t$ distribution with $n-1$ degrees of freedom.
+
+
+We  have the following confidence interval for $\mu$ at confidence level $1-\alpha$:
+
+$$\left[\overline{X}_n - \frac{\widehat{\sigma} t_{n-1,\alpha/2}}{\sqrt{n}},   \overline{X}_n + \frac{\widehat{\sigma} t_{n-1,\alpha/2}}{\sqrt{n}}\right]$$
+
+
+::: {.callout-note title="Question"}
+
+Simulate $N=1000$ Gaussian samples of size $n=100$. 
+
+Compute the empirical coverage of confidence intervals for $\alpha=5\%$  and 
+$\alpha=10\%$.
+
+Plot a histogram for replicates of $\frac{\overline{X}_n - \mu}{\widehat{\sigma}\sqrt{n}}$. Overlay the density of $t_{n-1}$.
+
+:::
+
+
+::::: {.content-visible when-profile="solution"}  
+
+```{r}
+#| label: ci-var-gauss
+#| code-fold: true
+N <- 1000 ; n <- 30
+
+X <- rnorm(N * n) |> 
+  matrix(nrow=n) |> 
+  as.data.frame() |> 
+  dplyr::summarise(across(everything(), .fns=c(mu_hat=mean, sigma_hat=sd), .names = '{.col}_{.fn}'))
+
+X |> 
+  select(1:4) |> 
+  head()
+```
+
+
+```{r}
+X <- X |> 
+  pivot_longer(
+    cols = everything(),
+    names_pattern = 'V([0-9]*)_([a-z_]*)',
+    names_to = c("Id", ".value")
+  )
+
+X |> 
+  glimpse()
+```
+
+```{r}    
+X <- X |> 
+  mutate(stud= sqrt(n)*mu_hat/(sigma_hat)) 
+
+X |> 
+  glimpse()
+```
+
+```{r}
+#| label: emp_distr
+#| 
+
+p <- X |> 
+  ggplot() +
+  aes(x=stud) +
+  geom_histogram(aes(y=after_stat(density)), 
+                 bins = 30,
+                 fill="white",
+                 color="black") +
+  stat_function(fun=dt, args=c(df=n-1), linetype="dashed") +
+  stat_function(fun=dnorm, linetype="dotted", color="blue") 
+  
+    
+p + (p + scale_y_log10()) +
+  plot_annotation(
+    title = "Histogram for Studentized discrepancy between true mean and estimate", 
+    subtitle = glue::glue("{N} replicates of Gaussian samples of size {n}"),
+    caption = glue::glue("Dashed line is Student t density with {n-1} degrees of freedom\nDotted line is standard Gaussian density")
+    )
+```
+
+The next function takes as arguments two vectors `mu_hat`  and `sig_hat` 
+and returns a dataframe where each row defines the bounds of a confidence interval 
+whose width is computed using the optional arguments `alpha` (`1-alpha` is the targeted confidence level) and `n` (`n` is the common size of the samples used to
+compute the estimates `mu_hat`  and `sig_hat`).
+
+```{r}
+#| label: coverage
+
+IC <- function(mu_hat, sig_hat, alpha=.05, n=100){
+  t_score <- qt(1-alpha/2, df=n-1) 
+  half_width <- t_score * sig_hat / sqrt(n)
+  bounds <- tibble(low=mu_hat-half_width, up=mu_hat+half_width)
+  bounds
+}
+```
+
+```{r}
+Y <- X |> 
+  mutate(ic_5 = IC(mu_hat, sigma_hat, alpha=.05, n = n),
+         ic_1 = IC(mu_hat, sigma_hat, alpha=.01, n = n)) |> 
+  unnest(c(ic_1, ic_5), names_sep = "_") 
+
+Y |> 
+  select(starts_with('ic_')) |> 
+  head()
+```
+
+We can compare the achieved coverage and the theoretical coverage of our confidence 
+intervals. 
+
+```{r}
+Y |>
+  mutate(ok_5 = (ic_5_low < 0) & (0 <ic_5_up),
+         ok_1 = (ic_1_low < 0) & (0 < ic_1_up)) |>
+  dplyr::summarise(across(starts_with("ok_"),
+                          .fn= sum,
+                          .names = c("coverage_{.col}")))
+```
+
+:::::
+
+
+
+## Testing independence 
+
+> In data gathered from the 2000 General Social Survey (GSS), one cross classiﬁes *gender* and *political party identiﬁcation*. Respondents indicated whether they identiﬁed more strongly with the Democratic {{< fa democrat >}} or Republican {{< fa republican >}} party or as Independents. This is summarized in the next contingency table (taken from Agresti *Introduction to Categorical Data Analysis*).
+
+```{r}
+
+# GSS <- vcdExtra::GSS
+
+T <- tribble(~ Democrat, ~ Independent, ~ Republican,
+             762, 327, 468,
+             484, 239, 477)
+rownames(T) <- c('Females', 'Males')
+T <- as.matrix(T)
+T <- as.table(T)
+names(dimnames(T)) <- c("Gender", "Party identification") 
+```
+
+```{r}
+#| label: gss-table
+#| 
+prop.table(T)
+
+margin.table(T, 1)
+margin.table(T, 2)
+```
+
+
+::: {.callout-note title="Question"}
+
+- Draw mosaicplot for the cross classification table
+- Compute the Pearson chi-square statistic for testing independence
+- Comment
+
+:::
+
+::::: {.content-visible when-profile="solution"}  
+
+```{r}
+#| label: gss_chisq
+#| 
+chisq.test(T) |> 
+  broom::tidy() |> 
+  knitr::kable()
+```
+
+```{r}
+#| label: gss_mosaic
+#| 
+
+vcd::mosaic(T, shade=T)
+```
+
+:::::
+
+
+
+
+
+
+## Visualizing multiway categorical data 
+
+Consider the  celebrated `UCBAdmissions` dataset
+
+According to `R` documentation, this dataset is made of
+
+> Aggregate data on applicants to graduate school at Berkeley for the six largest departments in 1973 classified by admission and sex.
+
+This is a compilation of `r sum(datasets::UCBAdmissions)` application files.
+
+For each application, three variables have been reported: the `department` , the `gender` of the applicant, and whether the applicant has been `admitted`.
+
+The dataset is a trivariate sample, which is summarized by a 3-way contingency table. 
+
+```{r}
+#| label: labelucba
+#| 
+data("UCBAdmissions")
+```
+
+::: {.callout-note title="Question"}
+
+Turn the 3-way contingency table into a dataframe/tibble with columns `Gender`, `Dept`, `Admit`, `n`, where the first columns are categorical, and the  last column counts the number of co-occurrences of the values in the first three columns amongst the UCB applicants.
+
+
+
+:::
+
+::::: {.content-visible when-profile="solution"}  
+
+We start from data summarized  in *table form* and obtain data summarized in *frequency form*. 
+
+```{r}
+#| label: UCBAlong
+#| code-fold: true
+
+UCBA_long <- UCBAdmissions |> 
+  as_tibble() |> 
+  select(Gender, Dept, Admit, n) |> 
+  arrange(Gender, Dept, Admit)
+
+UCBA_long |> 
+  knitr::kable()
+```
+
+
+
+[See `vcd` tutorial](https://www.datavis.ca/courses/VCD/vcd-tutorial.pdf)
+
+:::::
+
+::: {.callout-note title="Question"}
+
+Make it a bivariate sample by focusing on `Gender`  and `Admit`: compute the *margin table*
+
+Draw the corresponding mosaicplot and compute the chi-square independence statistic. 
+
+Comment.
+
+:::
+
+::::: {.content-visible when-profile="solution"}  
+
+```{r}
+#| label: margin-UCBA
+#| code-fold: true
+
+UCB_2 <- UCBAdmissions |>  
+  margin.table(margin=c('Gender', 'Admit')) 
+
+UCB_2
+```
+
+```{r}
+#| label: UCB-gender-admit-mosaic
+#| code-fold: true
+
+UCB_2 |> 
+  vcd::mosaic(shade=TRUE)
+```
+
+```{r}
+#| label: UCB-gender-admit-chi
+#| code-fold: true
+
+UCB_2 |> 
+  chisq.test() |> 
+  broom::tidy() |> 
+  knitr::kable()
+```
+```{r}
+#| label: chisq_at_work
+#| code-fold: true
+#| eval: false
+#| echo: false
+
+ggplot() +
+  stat_function(geom = "line", 
+                xlim = c(0, 10), 
+                fun=dchisq, args = c(df=1)) +
+  scale_y_log10()
+```
+:::::
+
+
+::: {.callout-caution}
+
+:::
+
+::: {.callout-note title="Question"}
+
+Visualize the three-way contingency table using double-decker plots from `vcd`
+
+:::
+
+
+::::: {.content-visible when-profile="solution"}  
+
+```{r}
+#| label: UCBA-3
+#| code-fold: true
+
+aperm(UCBAdmissions, c(3, 2, 1)) |> 
+  vcd::mosaic(shade=T)
+```
+
+```{r}
+#| label: UCBA3bis
+#| code-fold: true
+
+aperm(UCBAdmissions, c(3, 2, 1)) |> 
+  vcd::doubledecker()
+```
+:::::
+
+::: {.callout-note title="Question"}
+
+
+
+:::
+
+::: {.callout-note title="Question"}
+
+Viewing the `UCBAdmissions` dataset, which variable would you call a *response* variable?
+Which variable would you call *covariates*?
+
+Test independence between `Gender` and `Dept`.
+
+:::
+
+::::: {.content-visible when-profile="solution"}  
+
+```{r}
+#| label: assoc_gender_dept
+#| code-fold: true
+
+UCBAdmissions |>  
+  margin.table(margin=c('Gender', 'Dept')) |> 
+  chisq.test() |> 
+  broom::tidy() |> 
+  knitr::kable()
+```
+```{r}
+#| label: assoc_gender_dept_vis
+#| code-fold: true
+
+UCBAdmissions |>  
+  margin.table(margin=c('Gender', 'Dept')) |>
+  vcd::mosaic(shade=T)
+```
+
+{{< fa hand-point-right >}} `Dept` and `Gender` are associated at every 
+conceivable significance level.
+
+:::::
+
+
+::: {.callout-note title="Question"}
+
+For each department of application (`Dept`), extract the partial two-way table for `Gender` and `Admit`. Test each two-way table for independence. How many departments pass the test at significance level $1\%$, $5\%$?
+
+:::
+
+Note that the two-way cross-sectional slices of the three-way table are called partial tables.
+
+::::: {.content-visible when-profile="solution"}  
+
+```{r}
+#| label: conditional-indep
+
+dimnames(UCBAdmissions)$Dept |> 
+  map(\(x) UCBAdmissions[,,x]) |> 
+  map(chisq.test) |> 
+  map(broom::tidy) |> 
+  bind_rows() |> 
+  mutate(method="Pearson's Chi-squared test",
+         Dept=dimnames(UCBAdmissions)$Dept) |>
+  relocate(Dept) |> 
+  knitr::kable(digits = 2)
+```
+
+All departments but `A` pass the test at $5\%$ significance level, 
+`C` and `E` fail the test at $1\%$. 
+
+In Department 
+
+- `A`, female applicants are much more successful than male applicants.
+- `C`, `E`, female applicants are slightly less successful than male applicants
+
+{{< fa hand-point-right >}} This table summarizing the per Department chi-square tests nicely complements the double decker plot above.
+
+:::::
+
+What we observed has a name.
+
+::: {.callout-important}
+
+### Simpson's paradox
+
+The result that a marginal association can have different direction from the conditional associations is called Simpson’s paradox. This result applies to quantitative as well as categorical variables.
+
+:::
+
+
+::::: {.content-visible when-profile="solution"}  
+
+::: {.callout-note}
+
+Further investigation of datasets like `UCBAdmissions` suggest 
+designing a test for the following null hypothesis.
+
+In many examples with two categorical predictors $X$ and $Z$, and a binary response $Y$, $X$ identiﬁes two groups (here `Males` and `Females`) to compare and $Z$ is a control variable (Department of application). 
+
+For example, in a clinical trial, $X$ might refer to two treatments, $Y$ to the outcome of the treatment,  and $Z$ might refer to several centers that recruited patients for the study. 
+
+We want to test whether $X$ and $Y$ are independent conditionally on $Z$ (which is something different than independence). 
+
+This is the task faced by the Cochran–Mantel–Haenszel Test for $2 \times 2 \times K$ Contingency Tables (in the `UCBAdmissions` dataset, $K$ is the number of departements, and the conditional contingency tables are $2\times 2$).
+
+:::
+
+
+:::::

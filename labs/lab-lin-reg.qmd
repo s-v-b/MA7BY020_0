@@ -1,0 +1,822 @@
+---
+title: 'Lab: Linear Regression'
+date: "`r Sys.time()`"
+toc: true
+toc_depth: 2
+format:
+  html: 
+    output-file: lab-lin-reg.html
+  pdf:
+    output-file: lab-lin-reg.pdf
+embed-resources: true
+
+callout-appearance: simple
+
+prefer-html: true
+
+params:
+  truc: html
+  year: 2024 
+  curriculum: "M1 MIDS/MFA"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/eda"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=13227"
+  datapath: "../DATA/"
+  
+engine: knitr
+---
+
+```{r}
+#| label: setup-packages-foo
+#| message: false
+#| warning: false
+#| include: true
+#| 
+require(tidyverse)
+require(patchwork)
+require(httr)
+require(glue)
+require(broom)
+
+old_theme <- theme_set(theme_minimal())
+```
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+
+- **`r stringr::str_glue('{params$curriculum}')`**
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- `r stringr::str_glue("[Course Homepage]({params$homepage})")`  
+- `r stringr::str_glue("[Moodle]({params$moodle})")`
+
+::: 
+
+::: {#second-column}
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
+:::
+
+:::
+
+
+```{r setup-packages}
+#| echo: true
+#| warning: false
+#| message: false
+#| collapse: true
+
+stopifnot(
+  require(tidyverse), 
+                  require(ggforce),
+                  require(broom),
+                  require(corrr),
+                  require(GGally),
+                  require(patchwork), 
+                  require(glue),
+                  require(magrittr),
+                  require(DT), 
+                  require(rlang),
+                  require(lobstr),
+                  require(skimr),
+                  require(gt),
+                  require(kableExtra),
+                  require(viridis),
+                  require(pryr)
+)
+
+# for (pck in to_be_loaded) {
+#   if (!require(pck, character.only = T)) {
+#     install.packages(pck, repos="http://cran.rstudio.com/")
+#     stopifnot(require(pck, character.only = T))
+#   }  
+# }
+```
+
+
+```{r}
+#| message: false
+#| echo: false
+old_theme <-theme_set(theme_bw(base_size=9, base_family = "Helvetica"))
+
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  comment=NA,
+  prompt=FALSE,
+  cache=FALSE,
+  echo=TRUE,
+  results='asis'
+)
+```
+
+
+
+
+Dataset `Banque.csv` contains information on clerical officers in the Banking sector. We aim at investigating connections between variables.
+
+# Per-column analysis
+
+- [ ] Load the dataset.
+- [ ] Have a glimpse at it
+- [ ] Check the typing of columns
+
+
+```{r load_data}
+fpath <- str_c(params$datapath, "Banque.csv", sep="/")  # tune this
+
+bank <- readr::read_delim(fpath, delim = "\t", 
+    escape_double = FALSE, 
+    col_types = cols(
+        SEXE = col_character(), 
+        CATEGORIE = col_character(), 
+        NB_ETUDES = col_character()), 
+    trim_ws = TRUE)
+
+# View(bank)
+
+bank %>%
+  glimpse(withd=50)
+```
+
+
+::: unilur-solution
+
+```
+The table schema is the following
+
+-   SEXE :
+    -   "0" : Man,
+    -   "1" : Woman.
+-   AGE : in years.
+-   CATEGORIE : Employment category (from 1 to 7).
+-   NB_ETUDES : Number of years of education
+-   EXPERIENCE : Previous Expérience antérieure (in months).
+-   ANCIENNETE : Seniority in this bank (in months).
+-   SAL_EMBAUCHE : Starting salary (Euros).
+-   SAL_ACTUEL : Present salary (Euros).
+-   VILLE : City of residence
+-   SATIS_EMPLOI : Satisfied with your job?
+-   SATIS_CHEF : Satisfied with your manager?
+-   SATIS_SALAIRE : Satisfied with your salary?
+-   SATIS_COLLEGUES : Satisfied with your colleagues?
+-   SATIS_CE : Happy with your works council?
+```
+
+:::
+
+
+- [ ] Define population and individuals.
+
+::: unilur-solution
+
+```
+- Population: Bank employees in France
+- Sample: Those employees who answered the questionnaire (we have no clues about possible selection bias)
+```
+
+:::
+
+- [ ] Determine the type and domain of each variable.
+
+
+::: unilur-solution
+
+```{r}
+#| label: biotifoul
+#| 
+make_biotifoul <-  function(df, .f=is.factor){
+  .scales <- ifelse(identical(.f, is.factor), "free_x", "free")
+
+  p <- df %>%
+    select(where(.f)) %>%
+    pivot_longer(
+      cols = everything(),
+      names_to = "var",
+      values_to = "val"
+    ) %>%
+    ggplot() +
+    aes(x = val) +
+    facet_wrap(~var, scales=.scales) + xlab("")
+
+  if(identical(.f, is.factor)){
+    p + geom_bar()
+  } else {
+    p + geom_histogram(aes(y=after_stat(density)), bins=30) + xlab("")
+  }
+}
+```
+:::
+
+
+::: unilur-solution
+
+Preliminary inspection.
+
+```{r}
+bank %>%
+  skim() %>% 
+  DT::datatable(extensions=c("Responsive"))
+```
+
+:::
+
+- [ ] Make all columns with less than 10 distinct values `factor` or `logical`.
+
+::: unilur-solution
+
+All columns with less than 10 distinct values but more than 2 values will be considered as factors. 
+
+```{r}
+to_factorize <- bank %>%
+  summarise(across(everything(), n_distinct)) %>%
+  pivot_longer(cols=everything(),
+               names_to="name",
+               values_to = "n_distinct") %>%
+  filter(n_distinct<= 10) %>%
+  pull("name")
+```
+
+
+
+```{r}
+bank <- bank %>% 
+  mutate(
+    across(starts_with('SATIS_'),    # tidy selection 
+           ~ ifelse(.=="oui", TRUE, FALSE))
+  )
+
+bank <- bank %>% 
+  mutate(SEXE=ifelse(SEXE==1, "F", "M")) 
+
+to_factorize <- bank %>% 
+  select(-where(is_logical)) %>%   # tidy selection 
+  summarise(across(everything(), n_distinct)) %>%  # tidy selection 
+  pivot_longer(everything(),
+               names_to = "col_name", 
+               values_to = "n_distinct") %>% 
+  filter(n_distinct<=10) %>% 
+  pluck("col_name")
+
+bank <- bank %>% 
+  mutate(across(all_of(to_factorize), as_factor))  # tidy selection 
+```
+
+```{r}
+bank <- bank %>%
+  mutate(SEXE= fct_recode(SEXE, "M"="0", "F"="1"))
+```
+
+It looks better!
+
+```{r}
+bank %>%
+  skim(where(is.numeric)) %>% 
+  DT::datatable(extensions = c("Responsive"))
+```
+
+```{r}
+bank %>%
+  skim(where(is.factor)) %>% 
+  DT::datatable(extensions = c("Responsive"))
+```
+
+```{r}
+bank %>%
+  skim(where(is.logical)) %>% 
+  DT::datatable(extensions = c("Responsive"))
+```
+
+
+
+We add an identifier column so as to identify rows
+
+```{r}
+bank <- bank %>%
+  rownames_to_column(var="id")
+```
+
+```{r}
+bank %>%
+  select(-id) %>%
+  make_biotifoul(.f=is.factor)
+```
+
+```{r}
+bank %>%
+  select(-id) %>%
+  make_biotifoul(.f=is.numeric)
+```
+:::
+
+
+# Pairwise scan
+
+Use `pairs()` of `ggpairs()` to scan pairwise interactions between columns
+
+::: unilur-solution
+
+`ggpairs()` explores all pairwise interactions. 
+It is time-consuming. 
+```{r}
+# bank %>%
+#   ggpairs()
+```
+
+
+Function `pairs` works with numerical columns 
+```{r}
+#| fig.cap: "Pairwise interactions between numerical columns of bank dataset"
+#| 
+bank %>% 
+  select(where(is.numeric)) %>% 
+  pairs()
+```
+
+As we intend to *explain* `SAL_ACTUEL` as a function of the other 
+variables,  the last row is interesting. `SAL_EMBAUCHE` looks 
+more promising than the three other covariates. 
+
+```{r}
+#| fig.cap: "Pairwise interactions between numerical covariates and and response variable SAL_ACTUEL"
+#| 
+bank %>% 
+  select(where(is.numeric)) %>% 
+  pivot_longer(cols=-c("SAL_ACTUEL"),
+               names_to="covariate",
+               values_to = "X")  %>% 
+  ggplot() +
+    aes(y=SAL_ACTUEL, x=X) +
+    geom_point(alpha=.5, size=.5) +
+    facet_wrap(~ covariate, scales = "free_x") +
+    xlab("") +
+  ggtitle("SAL_ACTUEL versus other numerical covariates",
+          subtitle="Banque dataset")
+```
+
+:::
+
+# Linear correlation coefficient
+
+We first investigate connexion between salary at hiring time (`SAL_EMBAUCHE`) and current salary (*SAL_ACTUEL*).
+
+- [ ] Redraw a scatterplot. Observations?
+
+::: unilur-solution
+
+```{r}
+p_scat <- bank %>%
+  ggplot() +
+  aes(x=SAL_EMBAUCHE, y=SAL_ACTUEL) +
+  geom_point(alpha=.5, size=.5 ) +
+#  geom_jitter(alpha=.25, size=.5)
+  ggtitle("Bank dataset")
+```
+
+
+:::
+
+- [ ] Compute the Pearson correlation coefficient (using `cor`). Recall the formal definition of Pearson's correlation coefficient; 
+- [ ] Redraw the scatterplot and overlay it with a regression line.  
+- [ ] Conclusion ?
+
+::: unilur-solution
+
+Whith correlation coefficient.
+
+
+```{r}
+rho <- cor(bank$SAL_ACTUEL, bank$SAL_EMBAUCHE)
+
+p_scat_reg_lin <- p_scat +
+  geom_smooth(method="lm", formula= y ~ x, se=F) +
+  annotate(geom="text",
+           x=60000, y=80000,
+           label=glue("rho = {round(rho, 2)}"))
+
+(p_scat + ylim(c(0,160000))) + (p_scat_reg_lin + ylim(c(0,160000)))
+```
+:::
+
+
+::: unilur-solution
+```{r}
+rho <- cor(bank$SAL_ACTUEL, bank$SAL_EMBAUCHE)
+
+lm_1 <- lm(SAL_ACTUEL ~ SAL_EMBAUCHE , data=bank)
+
+p_scat_1 <- bank %>% 
+  ggplot() +
+  aes(x=SAL_EMBAUCHE, y= SAL_ACTUEL) +
+  geom_point(alpha=.5, size=.5) +
+  annotate(geom="text", x=60000, y=60000, label=str_c("rho: ", round(rho,2))) +
+  geom_smooth(method = "lm", formula = y ~ x, se=F) +
+  geom_smooth(method= "loess", formula = y ~ x, se=F, color="red") +
+  geom_abline(slope=coefficients(lm_1)[2], 
+              intercept =coefficients(lm_1)[1], color="green" ) # +
+#  coord_fixed()
+
+p_scat_1  +
+  xlim(c(-1000, 1e5)) + ylim(c(-1000, 2e5))
+```
+:::
+
+- [ ] Zoom on low incomes 
+
+::: unilur-solution
+
+```{r}
+p_scat_1  +
+  ggforce::facet_zoom(xlim=c(-1000,25000),ylim=c(-1000,50000))
+```
+
+
+:::
+
+
+
+# Linear fit using ordinary least squares (OLS)
+
+- [ ] Perform linear regression of SAL_ACTUEL with respect to SAL_EMBAUCHE. Store the result in an object denoted by `lm_1`
+- [ ] Inspect the numerical summary of `lm_1`
+- [ ] Use `Environment` panel (Rstudio), to explore the structure of `lm_1`. Try to understand the signification of each element.
+
+
+::: unilur-solution
+
+```{r}
+#| results: asis
+
+lm_1 <- lm(formula = SAL_ACTUEL ~ SAL_EMBAUCHE, data=bank)
+
+lm2str_frm <- . %>%
+  formula() %>%
+  deparse()
+
+frm_1 <- lm2str_frm(lm_1)
+
+summary(lm_1)
+
+cor(lm_1$fitted.values, bank$SAL_ACTUEL)^2
+
+var(lm_1$fitted.values)/var(bank$SAL_ACTUEL)
+```
+:::
+
+- [ ] Make the model summary  a dataframe/tibble using `broom::tidy()`
+
+::: unilur-solution
+```{r}
+lm_1 %>%
+  tidy() %>%
+  knitr::kable(digit=2, caption = frm_1)
+```
+:::
+
+- [ ] Make model diagnostic information a dataframe/tibble using `broom::glance()`
+
+::: unilur-solution
+```{r}
+lm_1 %>%
+  glance() %>%
+  knitr::kable(digit=2, caption = frm_1)
+```
+:::
+
+- [ ] Preparing for diagnostic plots using `broom::augment()`
+
+::: unilur-solution
+```{r}
+lm_1_aug <- lm_1 %>%
+  augment(data=bank)
+
+lm_1_aug %>%
+  head() %>%
+  knitr::kable(digits=2, caption = frm_1)
+```
+
+
+```{r}
+lm_1_aug %>%
+  select(starts_with(".")) %>%
+  head() %>%
+  knitr::kable(digits=2, caption = frm_1)
+```
+:::
+
+Let base `R` produce diagnostic plots
+
+```{r}
+#| eval: false
+#| 
+plot(lm_1, which = 1:6)
+```
+We will reproduce (and discuss) four of the six diagnostic plots provided by the `plot` method from base `R` (1,2,3,5).
+
+- [ ] Reproduce first diagnostic plot with `ggplot` using the aumented version of `lm_1` (`augment(lm_1)`).
+
+::: unilur-solution
+
+```{r}
+p_1_lm_1 <- lm_1_aug %>%
+  ggplot() +
+  aes(x=.fitted, y=.resid)+
+  geom_point(alpha=.5, size=.5) +
+  geom_smooth(formula = y ~ x,
+              method="loess",
+              se=F,
+              linetype="dotted",
+              linewidth=.5,
+              color="black") +
+  xlab("Fitted values") +
+  ylab("Residuals)") +
+  ggtitle("Bank dataset",
+          subtitle = frm_1) +
+  labs(caption = "Residuals versus Fitted")
+```
+:::
+
+- [ ] Comment Diagnostic Plot 1.
+- [ ] Compute the correlation coefficient between residuals and fitted values.
+
+- [ ] Make your graphic pipeline a reusable function.
+
+::: unilur-solution
+```{r}
+make_p_diag_1 <- function(lm.){
+  augment(lm.) %>%
+  ggplot() +
+  aes(x=.fitted, y=.resid)+
+  geom_point(alpha=.5, size=.5) +
+  geom_smooth(method="loess",
+              formula = y ~ x,
+              se=F,
+              linetype="dotted",
+              size=.5,
+              color="black") +
+  xlab("Fitted values") +
+  ylab("Residuals)") +
+  labs(title = "Residuals versus Fitted")
+}
+```
+:::
+
+- [ ] What are *standardized residuals* ?
+- [ ] Build the third diagnostic plot (square root of absolute values of standardized residuals versus fitted values) using `ggplot`.
+- [ ] Why should we look at the square root of standardized residuals?
+
+::: unilur-solution
+```{r}
+p_3_lm_1 <- lm_1_aug %>%
+  ggplot() +
+  aes(x=.fitted, y=sqrt(abs(.std.resid))) +
+  geom_smooth(formula = y ~ x,
+              se=F,
+              method="loess",
+              linetype="dotted",
+              size=.5,
+              color="black") +
+  xlab("Fitted values") +
+  ylab("sqrt(standardized residuals)") +
+  geom_point(size=.5, alpha=.5) +
+  ggtitle("Bank dataset",
+          subtitle = frm_1) +
+  labs(caption = "Scale location")
+
+# plot(lm.1, which=3)
+```
+:::
+
+- [ ] Make your graphic pipeline a reusable function.
+
+::: unilur-solution
+```{r}
+make_p_diag_3 <-  function(lm.){
+  augment(lm.) %>%
+  ggplot() +
+  aes(x=.fitted, y=sqrt(abs(.std.resid))) +
+  geom_smooth(formula = y ~ x,
+              method="loess",
+              se=F,
+              linetype="dotted",
+              size=.5,
+              color="black") +
+  xlab("Fitted values") +
+  ylab("sqrt(standardized residuals)") +
+  geom_point(size=.5, alpha=.5) +
+  labs(title = "Scale location")
+}
+```
+:::
+
+- [ ] What is leverage ?
+- [ ] Build the fifth diagnostic plot (standardized residuals versus leverage) using `ggplot`.
+
+::: unilur-solution
+```{r}
+p_5_lm_1 <- lm_1_aug %>%
+  ggplot() +
+  aes(x=.hat, y=((.std.resid))) +
+  geom_point(size=.5, alpha=.5) +
+  xlab("Leverage") +
+  ylab("Standardized residuals") +
+  ggtitle("Bank dataset",
+           subtitle = frm_1)
+
+# plot(lm.1, which = 5)
+```
+:::
+
+::: unilur-solution
+```{r}
+make_p_diag_5 <-  function(lm.){
+  augment(lm.) %>%
+  ggplot() +
+  aes(x=.hat, y=((.std.resid))) +
+  geom_point(size=.5, alpha=.5) +
+  xlab("Leverage") +
+  ylab("Standardized residuals") +
+  labs(title = "Standardized residulas versus Leverages")
+}
+```
+:::
+
+In the second diagnostic plot (the residuals qqplot), we build a quantile-quantile plot by plotting  function $F_n^{\leftarrow} \circ \Phi$ where $\Phi$ is the ECDF of the standard Gaussian distribution while $F^\leftarrow_n$.
+
+- [ ] Build the second diagnostic plot using `ggplot`
+
+::: unilur-solution
+```{r}
+p_2_lm_1 <- lm_1_aug %>%
+  ggplot() +
+  aes(sample=.resid) +
+  geom_qq(size=.5, alpha=.5) +
+  stat_qq_line(linetype="dotted",
+              size=.5,
+              color="black") +
+  ggtitle("Bank dataset",
+          subtitle = frm_1) +
+  labs(caption="Residuals qqplot") +
+  xlab("Theoretical quantiles") +
+  ylab("Empirical quantiles of residuals")
+
+# plot(lm_1, which = 2)
+```
+:::
+
+
+::: unilur-solution
+```{r}
+make_p_diag_2 <-  function(lm.){
+  augment(lm.) %>%
+  ggplot() +
+  aes(sample=.resid) +
+  geom_qq(size=.5, alpha=.5) +
+  stat_qq_line(linetype="dotted",
+              size=.5,
+              color="black") +
+  labs(title="Residuals qqplot")
+}
+```
+:::
+
+- [ ] Use package `patchwork::...`  to collect your four diagnostic plots
+
+::: unilur-solution
+```{r}
+#| fig.cap: 'SAL_ACTUEL ~ SAL_EMBAUCHE'
+#| 
+lyt <- patchwork::plot_layout(ncol=2, nrow=2)
+
+make_p_diag_1(lm_1) +
+make_p_diag_2(lm_1) +
+make_p_diag_3(lm_1) +
+make_p_diag_5(lm_1)    # DRY this ?
+```
+
+```{r}
+#| eval: false
+#| 
+p_1_lm_1 + p_2_lm_1 + p_3_lm_1 + p_5_lm_1
+```
+:::
+
+- [ ] Plot actual values against fitted values for `SAL_ACTUEL`
+
+::: unilur-solution
+```{r}
+p_1_bis_lm_1 <- lm_1_aug %>%
+  ggplot() +
+  aes(x=.fitted, y=SAL_ACTUEL)+
+  geom_point(alpha=.5, size=.5) +
+  geom_smooth(formula = y ~ x,
+              method="loess",
+              se=F,
+              linetype="dotted",
+              size=.5,
+              color="black") +
+  xlab("Fitted values") +
+  ylab("SAL_ACTUEL") +
+  ggtitle("Bank dataset",
+          subtitle = frm_1) +
+  labs(caption = "SAL_ACTUEL versus Fitted")
+
+p_1_bis_lm_1
+```
+:::
+
+#  Play it again with `AGE` and `SAL_ACTUEL`
+
+- [ ] Redo the above described steps and call the model `lm_2`.
+
+::: unilur-solution
+
+```{r}
+lm_2 <- lm(SAL_ACTUEL ~ AGE, data=bank)
+
+lm_2 %>%
+  tidy()
+```
+
+
+```{r}
+#| fig.cap: "SAL_ACTUEL ~ AGE"
+#| 
+
+lyt <- patchwork::plot_layout(ncol=2, nrow=2)
+
+make_p_diag_1(lm_2) +
+  make_p_diag_2(lm_2) +
+  make_p_diag_3(lm_2) +
+  make_p_diag_5(lm_2)
+```
+
+
+```{r}
+bank %>%
+  ggplot() +
+  aes(x=AGE, y=SAL_ACTUEL) +
+  geom_point(alpha=.5, size=.5, ) +
+  geom_smooth(method="lm", formula= y ~ x, se=F) +
+  annotate(geom="text", x=60, y=60000,
+           label=str_c("rho = ",
+                       round(cor(bank$SAL_ACTUEL, bank$AGE), 2))) +
+  ggtitle("Bank dataset")
+```
+
+Inspect rows with high Cook's distance
+
+```{r}
+lm_1_aug %>%
+  filter(.cooksd> 2*mean(.cooksd)) %>%
+  select(-starts_with(".")) %>%
+  DT::datatable()
+```
+:::
+
+- [ ] Discuss the relevance of Simple Linear Regression for analyzing the connection between `SAL_ACTUEL` and `SAL_EMBAUCHE`
+
+- [ ] Compute the Pearson correlation coefficient for every pair of quantitative variable? Draw corresponding scatterplots.
+
+::: unilur-solution
+```{r}
+bank %>%
+  select(-id) %>%
+  select(where(is.numeric)) %>%
+  corrr::correlate() %>%
+  corrr::shave() %>%
+  corrr::rplot()
+```
+:::
+
+
+# Predictive linear regression of `SAL_ACTUEL` as a function of age `AGE`
+
+
+To perform linear fitting, we choose $450$ points amongst the $474$ sample points: the $24$ remaining points are used to assess the merits of the linear fit.
+
+- [ ]   Randomly select $450$ rows in the `banque` dataframe.
+Function `sample` from base `R`  is convenient. You may also enjoy `slice_sample()` from `dplyr`. Denote by `trainset` the vector of of selected indices. Bind the vector of left behind indices to variable `testset`. Functions `match`, `setdiff` or operator `%in%` may be useful.
+
+
+
+- [ ]  Linear fit of `SAL_ACTUEL` with respect to `AGE`, on the training set. Call the result `lm_3`.
+- [ ] How do you feel about such a linear fit? (Use diagnostic plots)
+
+```{r}
+#| unilur-solution: true
+#| 
+old_seed <- set.seed(42)
+
+trainset_size <-  450
+
+trainset <- sample(pluck(bank, "id") , trainset_size)
+
+testset <- setdiff(pluck(bank, "id") , trainset)
+
+trainset <- as.integer(trainset)
+testset <- as.integer(testset)
+
+# foo <- slice_sample(bank, n = trainset_size)
+```

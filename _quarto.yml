@@ -5,7 +5,7 @@ project:
     - "weeks/"
     - "labs/"
     - "!slides/"
-    - "!solutions/"
+    - "!labs-solutions/"
     - "!exams/"
   output-dir: _site
 
@@ -27,7 +27,7 @@ website:
 
   sidebar:
     background: "#D9E3E4"
-    logo: "images/logo.png"
+    logo: "images/hexlogo_ma7BY020.png"
     pinned: true
     align: center
     tools:
@@ -48,20 +48,18 @@ website:
     search: true
     collapse-level: 1
     contents:
-      - section: "Informations générales"
+      - section: "Information"
         contents:
           - href: index.qmd
-            text: Aperçu
-          - href: cours-syllabus.qmd
+            text: Glimpse
+          - href: course-syllabus.qmd
             text: Syllabus
-          - href: cours-team.qmd
+          - href: course-team.qmd
             text: Team
       - section: "Support"
         contents:
           - href: computing-access.qmd
             text: "Computing resources"
-          - href: computing-dbeaver.qmd
-            text: "dbeaver"
           - href: rstudio-client.qmd
             text: "rstudio"
           - href: posit-cloud.qmd
@@ -72,38 +70,38 @@ website:
         text: Slides
       - href: labs-listings.qmd
         text: Labs
-      - href: Solutions-listings.qmd
-        text: Corrections  
+      - href: labs-solutions-listings.qmd
+        text: Solutions  
       - href: exams-listings.qmd
         text: Exams
       - section: "Journal"
         contents:
           - href: weeks/week-1.qmd
-            text: "Semaine 1"
+            text: "Week 1"
           - href: weeks/week-2.qmd
-            text: "Semaine 2"
+            text: "Week 2"
           - href: weeks/week-3.qmd
-            text: "Semaine 3"
+            text: "Week 3"
           - href: weeks/week-4.qmd
-            text: "Semaine 4"
+            text: "Week 4"
           - href: weeks/week-5.qmd
-            text: "Semaine 5"
+            text: "Week 5"
           - href: weeks/week-6.qmd
-            text: "Semaine 6"
+            text: "Week 6"
           - href: weeks/week-7.qmd
-            text: "Semaine 7"
+            text: "Week 7"
           - href: weeks/week-8.qmd
-            text: "Semaine 8"
+            text: "Week 8"
           - href: weeks/week-9.qmd
-            text: "Semaine 9"
+            text: "Week 9"
           - href: weeks/week-10.qmd
-            text: "Semaine 10"
+            text: "Week 10"
           - href: weeks/week-11.qmd
-            text: "Semaine 11"
+            text: "Week 11"
           - href: weeks/week-12.qmd
-            text: "Semaine 12"
+            text: "Week 12"
           - href: weeks/week-13.qmd
-            text: "Semaine 13"
+            text: "Week 13"
 
 format:
   html:

@@ -1,0 +1,714 @@
+---
+title: 'LAB: dplyr and SQL'
+date: "`r Sys.time()`"
+
+
+execute:
+  echo: true
+  eval: true
+  collapse: true
+
+
+format:
+  html:
+    output-file: lab-dplyr-SQL.html
+  pdf:
+    output-file: lab-dplyr-SQL.pdf
+
+params:
+  truc: html
+  year: 2024 
+  curriculum: "M1 MIDS & MFA"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/eda"
+  moodle: ""
+---
+
+
+
+
+
+::: {layout="[80,20]"}
+
+::: {#first-column}
+
+- **`r stringr::str_glue('{params$curriculum}')`**
+- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
+- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
+- `r stringr::str_glue("[Course Homepage]({params$homepage})")`  
+- `r stringr::str_glue("[Moodle]({params$moodle})")`
+
+::: 
+
+::: {#second-column}
+![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
+:::
+
+:::
+
+
+
+```{r setup-packages}
+#| warning: false
+#| message: false
+#| collapse: true
+
+to_be_loaded <- c("tidyverse", 
+                  "glue",
+                  "cowplot",
+                  "patchwork",
+                  "nycflights13",
+                  "DBI",
+                  "RSQLite",
+                  "RPostgreSQL",
+                  "dtplyr",
+                  "dbplyr"
+)
+
+for (pck in to_be_loaded) {
+  if (!require(pck, character.only = T)) {
+    install.packages(pck, repos="http://cran.rstudio.com/")
+    stopifnot(require(pck, character.only = T))
+  }  
+}
+```
+
+```{r}
+old_theme <- theme_set(theme_minimal())
+```
+
+# Objectives
+
+From the [Documentation](https://dplyr.tidyverse.org/index.html)
+
+> `dplyr` is a grammar of data manipulation, providing a consistent set of verbs that help you solve the most common data manipulation challenges:
+
+> -` mutate()` adds new variables that are functions of existing variables
+> - `select()` picks variables based on their names.
+> - `filter()` picks cases based on their values.
+> - `summarise()` reduces multiple values down to a single summary.
+> - `arrange()` changes the ordering of the rows.
+
+`dplyr` provides an elegant implementation of table calculus, as embodied by `SQL`.  
+
+We will play with the [`nycflights13`]() dataset
+
+![NYCFlights13](./IMG/nycflights_layout_crop.png){width="80%"}
+
+# Loading `nycflights`
+
+## In memory 
+
+```{r}
+flights <- nycflights13::flights
+weather <- nycflights13::weather
+airports <- nycflights13::airports
+airlines <- nycflights13::airlines
+planes <- nycflights13::planes
+```
+
+
+```{r}
+#| eval: true
+con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+flights_lite <- copy_to(con, nycflights13::flights)
+airports_lite <- copy_to(con, nycflights13::airports)
+planes_lite <- copy_to(con, nycflights13::planes)
+weather_lite <- copy_to(con, nycflights13::weather)
+airlines_lite <- copy_to(con, nycflights13::airlines)
+```
+
+
+```{r}
+
+```
+
+
+# Pure relational algebra $\sigma, \pi, \bowtie, \cap, \cup, \setminus$
+
+## Projection, $\pi$, `select(...)`
+
+Projection of a table $R$ on columns $A_{i_1},\ldots, A_{i_k}$ results in a table 
+with schema $A_{i_1},\ldots, A_{i_k}$ and one row for each row of $R$. Projection is denoted by $\pi(R, A_{i_1},\ldots, A_{i_k})$. 
+
+In SQL this reads as 
+
+```{.sql}
+SELECT Ai1, , Aik
+FROM R 
+```
+
+```{r}
+#| include: false
+
+R <- tibble(A=as_date("2024-01-31")+ sample(1:10, 10, replace = T),
+            B=sample(1:10, 10, replace = T),
+            C=sample(letters, 10, replace = T),
+            )
+
+S <- tibble(A = sample(R$A, 8, replace = T),
+            D = sample(20:30, 8 , replace = T),
+            F = sample(letters, 8, replace = F))
+```
+
+```{r}
+R_lite <- copy_to(con, R)
+S_lite <- copy_to(con, S)
+```
+
+
+In the sequel, we illustrate operations on the next two toy tables 
+
+::::: {layout="[50,50]"}
+
+::: {#first-column}
+
+Table `R`
+```{r}
+#| echo: false
+#| 
+R |> 
+  knitr::kable()
+```
+
+:::
+
+::: {#second-column}
+
+Table `S`
+```{r}
+#| echo: false
+S |> 
+  knitr::kable()
+```
+
+:::
+
+:::::
+
+In Relational Algebra, tables are sets rather than multisets, there are no duplicates. In SQL we are handling multisets of rows, duplicates need to be removed explicitly
+
+```{.sql}
+SELECT DISTINCT Ai1, ..., Aik
+FROM R 
+```
+
+`dplyr` has one verb `select(...)` for $\pi$ or `SELECT`, and verb `distinct()` for `SELECT DISTINCT ...`.
+
+If we have no intention to remove duplicates:
+```{.r}
+select(R, Ai1, ..., Aik)
+# or
+R |> 
+  select(Ai1, ..., Aik)
+```
+If we want to remove deplicates
+```{.r}
+distinct(R, Ai1, ..., Aik)
+# or
+R |> 
+  distinct(Ai1, ..., Aik)
+```
+
+::::: {layout="[50,50]"}
+
+::: {#first-column}
+
+$\pi(R, B, C)$  (`SELECT B, C FROM R `) leads to 
+```{r}
+#| echo: false
+R |> 
+  select(B, C) |> 
+  knitr::kable()
+```
+:::
+
+::: {#second-column}
+
+$\pi(R, B)$ and  `SELECT DISTINCT B FROM R` lead to 
+```{r}
+#| echo: false
+R |> 
+  distinct(B) |> 
+  knitr::kable()
+```
+:::
+
+:::
+
+> For each departure airport  (denoted by `origin'),  each day of the year, list the codes (denoted by `carrier`) of the airlines that have one or more planes taking off from that airport on that day.
+
+::::: {.content-visible when-profile="solution"}  
+
+::: {.callout-tip}
+
+In SQL, we can phrase this query like this:
+
+```{.sql}
+SELECT DISTINCT f.origin, f.year, f.month, f.day, f.carrier
+FROM nycflights.flights f ;
+```
+
+Using `dplyr`  and chaining with standard  pipe `|>` or `%>%` from `magrittr`, we can write.
+
+```{r}
+q1 <- . %>%   # <1>
+  distinct(origin, year, month, day, carrier) 
+
+q1(flights) |>
+  head()
+```
+1. To define a unary function implementing the short pipeline, we have to use `%>%`.
+
+
+We can reuse the pipeline to query the lazy tables., we can even 
+```{r}
+q1(flights_lite) |> 
+  head()
+
+q1(flights_lite) |> 
+  show_query()
+
+q1(flights_lite) |> 
+  explain()
+```
+
+:::
+
+:::::
+
+## Selection, $\sigma$, `filter(...)`
+
+Selection of a table $R$ according to condition $\texttt{expr}$
+is an expression that can be evaluated on each row of $R$ results in a table 
+with the same schema as $R$ and all rows of $R$ where $\texttt{expr}$ evaluates to `TRUE`. Selection  is denoted by $\sigma(R, \texttt{expr})$. 
+
+In SQL this reads as 
+
+```{.sql}
+SELECT R.*
+FROM R 
+WHERE expr
+```
+
+
+`dplyr` has one verb `filter(...)` for $\sigma$.
+
+
+::::: {layout="[50,50]"}
+
+::: {#first-column}
+
+$\sigma(R, A < \text{2024-02-06} \wedge \text{2024-02-02} \leq A)$  (`SELECT * FROM R WHERE A < CAST('2024-02-06' AS DATE) AND A >= CAST('2024-02-02' AS DATE)`) leads to 
+```{r}
+#| echo: false
+R |> 
+  filter(A < as_date('2024-02-06'), A >= as_date('2024-02-02')) |> 
+  knitr::kable()
+```
+:::
+
+::: {#second-column}
+
+`SELECT DISTINCT B FROM R` leads to 
+```{r}
+#| echo: false
+R |> 
+  distinct(B) |> 
+  knitr::kable()
+```
+:::
+
+:::
+
+> List all the planes built by a manufacturer named like `AIRBUS` between `2005` and `2010`
+
+::::: {.content-visible when-profile="solution"}  
+
+::: {.callout-tip}
+
+
+```{r}
+qx <- . %>% 
+  filter(str_like(manufacturer, 'AIRBUS%') &  year >= 2005 & year <= 2010)
+
+qx(planes)
+```
+
+```{r}
+qx(planes_lite) |> 
+  show_query()
+```
+
+:::
+
+:::::
+
+## Joins, $\bowtie$, `xxx_join(...)`
+
+In relational algebra, a  $\theta$-join boils down to a selection according to expression $\theta$ over a cross product (possibly after renaming some columns)
+
+$$\bowtie(R, S, \theta) \approx \sigma(R \times S, \theta)$$
+`dplyr` does not (yet?) offer such a general join (which anyway can be very expensive on a cutting edge RDBMS) several variants of *equijoin*.
+
+`ChatGPT` asserts:
+
+> An equijoin is a type of join operation in relational databases where the join condition involves an equality comparison between two attributes from different tables. In other words, it's a join operation that combines rows from two tables based on matching values in specified columns. These specified columns are usually called the "join columns" or "join keys."
+
+[Joins in `dplyr` documentation](https://dplyr.tidyverse.org/reference/mutate-joins.html)
+
+- `inner_join()`
+- `left_join()`
+- `right_join()`
+- `full_join()`
+
+but also
+
+- `semi_join()`
+- `anti_join()`
+
+the matching columns are stated using optional argument `by=...`
+
+If argument `by` is omitted, `NATURAL JOIN` is assumed.
+
+
+$\bowtie(R, S)$  (`SELECT * FROM R NATURAL JOIN S `) leads to 
+```{r}
+#| echo: false
+R |> 
+  inner_join(S) |> 
+  DT::datatable(extensions = c("Responsive"))
+```
+
+---
+
+$\bowtie^{\text{Left outer}}(R, S)$ and  `SELECT * FROM R LEFT JOIN S ON (R.A=S.A)` lead to 
+```{r}
+#| echo: false
+R |> 
+  left_join(S) |> 
+  DT::datatable(extensions = c("Responsive"))
+```
+
+
+> List weather conditions at departure for all flights operated by airline named `Delta ...`. 
+
+::::: {.content-visible when-profile="solution"}  
+
+::: {.callout-tip}
+
+In SQL, we can rely on the next query
+
+```{.sql}
+WITH delta AS (
+    SELECT al.carrier
+    FROM nycflights.airlines al
+    WHERE al."name" = 'Delta Air Lines Inc.'
+),
+delta_f AS (
+    SELECT f.origin, f.flight, f.year, f.month, f.day, f.hour 
+    FROM nycflights.flights f
+    WHERE f.carrier IN (SELECT * FROM delta)
+)
+
+SELECT f.flight, w.*
+FROM  nycflights.weather w NATURAL JOIN delta_f f;
+```
+
+Using `dplyr`, we can mimick this approach.
+
+```{r}
+delta <- . %>% 
+  filter(str_like(name, "Delta%")) 
+
+delta_f <- . %>% 
+  semi_join(delta(airlines),   # <1>
+            by = join_by(carrier))
+
+delta_f(flights) |>  head()
+
+jb <- join_by(origin, year, month, day, hour)
+
+q3 <- .  %>% 
+  inner_join(weather, by = jb)
+
+q3(delta_f(flights)) |> 
+  head()
+```
+1. Check `semi_join`
+
+We can (almost) reuse the pipeline on lazy tables
+```{r}
+delta_f <- . %>% 
+  semi_join(delta(airlines_lite), by = join_by(carrier))
+
+delta_f(flights_lite) |> 
+  head()
+
+delta_f(flights_lite) |>  
+  show_query()
+
+q3 <- .  %>% 
+  inner_join(weather_lite, by = jb)
+
+q3(delta_f(flights_lite)) |> 
+  show_query()
+```
+
+
+:::
+
+
+:::::
+
+
+# Agregation, `summarize(...)` 
+
+According to ChatGPT:
+
+> In SQL, an aggregation function is a function that operates on a set of values and returns a single aggregated value summarizing those values. These functions are commonly used in SQL queries to perform calculations across multiple rows and produce meaningful results. Some common aggregation functions in SQL include:
+
+- `COUNT`: Counts the number of rows in a result set.
+- `SUM`: Calculates the sum of values in a column.
+- `AVG`: Calculates the average of values in a column.
+- `MIN`: Finds the minimum value in a column.
+- `MAX`: Finds the maximum value in a column.
+
+> Count the number of airport whose name starts with `International`
+
+::::: {.content-visible when-profile="solution"}  
+
+::: {.callout-tip}
+
+```{r}
+qb <- . %>% 
+  filter(str_like(name, 'International%')) %>% 
+  summarise(n=n())
+
+airports %>% 
+  filter(str_like(name, 'International%')) %>%
+  count()
+```
+
+```{r}
+qb(airports_lite) |>
+  show_query()
+```
+:::
+
+
+:::::
+
+
+# Partition, `group_by`
+
+Following again ChatGPT
+
+> Aggregation functions are often used with the `GROUP BY` clause in SQL queries to group rows that have the same values in specified columns, allowing the aggregation functions to operate on each group separately. This enables powerful analysis and reporting capabilities in SQL, allowing users to extract useful insights from large datasets.
+
+In table $R$, for each value in column `A` sum the values in column `B`
+```{r}
+#| echo: false
+R |>
+  group_by(A) |> 
+  summarise(s=sum(B)) |> 
+  knitr::kable()
+```
+
+`dplyr` offers a `group_by()` verb that proves powerful and flexible.
+The resulting grouped tibble can be used both for aggregation and 
+for implementing certain kinds of windows. 
+
+> For each departure airport, each airline, count the number of flights operated by this airline from this airport. 
+
+::::: {.content-visible when-profile="solution"}  
+
+::: {.callout-tip}
+
+```{.sql}
+SELECT f.origin, f.carrier, COUNT(*) AS n
+FROM nycflights.flights f
+GROUP BY f.origin, f.carrier 
+ORDER BY f.carrier, n DESC;
+```
+
+```{r}
+q4 <- . %>% 
+  group_by(carrier, origin) %>% 
+  summarise(n=n(), .groups="drop") %>%
+  arrange(desc(carrier))
+  
+q4(flights)
+```
+
+```{r}
+q4(flights_lite) |> 
+  show_query()
+```
+
+:::
+
+
+:::::
+
+
+::::: {.content-visible when-profile="solution"}  
+
+::: {.callout-tip}
+
+```{.sql}
+SELECT f.origin, f.year, f.month, f.day, f.carrier, COUNT(DISTINCT tailnum)
+FROM nycflights.flights f 
+GROUP BY f.origin, f.year, f.month, f.day, f.carrier
+ORDER BY f.origin, f.year, f.month, f.day, f.carrier;
+```
+
+```{r}
+q2 <- . %>% 
+  group_by(origin, year, month, day, carrier) %>% 
+  summarise(n_tailnum=n_distinct(tailnum), .groups = "drop") %>% 
+  arrange(origin, year, month, day, carrier) 
+
+q2(flights) |> 
+  head()
+```
+
+```{r}
+q2(flights_lite) |>
+  show_query()
+```
+
+:::
+
+
+:::::
+
+
+> List the features of planes that have been operated by several airlines
+
+::::: {.content-visible when-profile="solution"}  
+
+::: {.callout-tip}
+
+```{.sql}
+WITH for_hire AS (
+    SELECT f.tailnum, COUNT(DISTINCT f.carrier) AS n_carrier
+    FROM nycflights.flights f
+    GROUP BY f.tailnum 
+    HAVING COUNT(DISTINCT f.carrier) >=2 
+)
+
+SELECT p.*
+FROM nycflights.planes p NATURAL JOIN for_hire ;
+```
+
+```{r}
+for_hire <- . %>% 
+  group_by(tailnum) %>% 
+  summarise(n_carriers=n_distinct(carrier)) %>% 
+  filter(n_carriers >= 2) %>% 
+  select(tailnum)
+
+for_hire(flights) |>  head()
+
+planes %>% 
+  semi_join(for_hire(flights), by=join_by(tailnum)) 
+```
+
+```{r}
+planes_lite %>% 
+  semi_join(for_hire(flights_lite), by=join_by(tailnum)) %>% 
+  show_query()
+```
+
+
+:::
+
+:::::
+
+# Adding/modifying columns, `mutate(...)`
+
+In the `SELECT` clause of an SQL query, certain columns can be computed. Verb `select` from `dplyr` does not offer this possibility. We have to add the computed columns using verb `mutate` and then to perform projection using `select` (if necessary)
+
+Assume we want to add one day to every value in column `A` from $R$
+so as to obtain:
+```{r}
+#| echo: false
+R |>
+  mutate(A = A +1)
+```
+In SQL we can proceed like this 
+```{.sql}
+SELECT A + 1  AS A, B, C
+FROM R
+```
+
+
+# Window functions  
+
+Asking ChatGPT we obtain 
+
+> In SQL, a window function (also known as an analytic function or windowed function) is a type of function that performs a calculation across a set of rows related to the current row within a query result set. Unlike aggregation functions which collapse multiple rows into a single row, window functions operate on a "window" of rows defined by a partition or an ordering.
+
+> Key features of window functions include:
+
+> Partitioning: The window function can be partitioned by one or more columns, dividing the result set into groups or partitions. The function is applied independently within each partition.
+
+> Ordering: The window function can be ordered by one or more columns, defining the sequence of rows within each partition. This determines the rows included in the window for each calculation.
+
+> Frame specification: Optionally, a window function can have a frame specification, which further refines the rows included in the window based on their position relative to the current row.
+
+> Window functions allow for advanced analytics and reporting tasks that require comparisons or calculations across multiple rows without collapsing the result set. They can be used to compute running totals, calculate moving averages, rank rows within partitions, and perform other complex analyses.
+
+> Some common window functions in SQL include `ROW_NUMBER()`, `RANK()`, `DENSE_RANK()`, `NTILE()`, `LAG()`, `LEAD()`, `SUM() OVER()`, `AVG() OVER()`, etc.
+
+If we focus on window queries with a single window built using `PARTITION BY ` and `ORDER BY`, we just need to combine, `group_by()`, possibly `arrange()`, and `mutate()` 
+
+
+
+> For each departure airport, and day, list the 10 most delayed flights.
+
+
+::::: {.content-visible when-profile="solution"}  
+
+::: {.callout-tip}
+
+In SQL we can proceed like this:
+
+```{.sql}
+WITH f_delayed AS (
+  SELECT f.*, RANK() OVER w AS rnk
+  FROM nycflights.flights f
+  WHERE f.dep_time IS NOT NULL
+  WINDOW w AS (PARTITION BY f.origin, f.year, f.month, f.day ORDER BY f.dep_delay DESC)  
+)
+
+SELECT fd.origin, fd.year, fd.month, fd.day, fd.tailnum
+FROM f_delayed fd
+WHERE fd.rnk <= 10;
+```
+
+
+
+```{r}
+f_delayed <- . %>% 
+  filter(!is.na(dep_time)) %>% 
+  group_by(origin, year, month, day) %>% 
+  mutate(rnk=min_rank(desc(dep_delay))) %>% 
+  ungroup()
+
+f_delayed(flights) |>
+  filter(rnk <= 10) |> 
+  head()
+```
+
+:::
+
+:::::
+
+
+
+
+[Use the cheatsheet](https://github.com/rstudio/cheatsheets/blob/main/data-transformation.pdf)
+
+
