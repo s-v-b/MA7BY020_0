@@ -1,5 +1,6 @@
 ---
-title: 'LAB: Bivariate analysis'
+title: 'Bivariate analysis'
+categories: [Bivariate analysis, Boxplots, Pairplots]
 date: "`r Sys.time()`"
 
 
@@ -46,38 +47,38 @@ params:
 
 :::
 
+::: {.callout-important}
 
+### Objectives
+
+In Exploratory analysis of tabular data, bivariate analysis is the second step. It consists in exploring, summarizing, visualizing pairs of columns of a dataset.
+
+###
+
+
+## Setup
 
 ```{r setup-packages}
 #| warning: false
 #| message: false
 #| collapse: true
-
-to_be_loaded <- c("tidyverse", 
-                  "glue",
-                  "magrittr",
-                  "lobstr",
-                  "arrow",
-                  "ggforce",
-                  "vcd",
-                  "ggmosaic",
-                  "httr",
-                  "cowplot",
-                  "patchwork"
+stopifnot(
+  require(tidyverse), 
+  require(glue),
+  require(magrittr),
+  require(lobstr),
+  require(arrow),
+  require(ggforce),
+  require(vcd),
+  require(ggmosaic),
+  require(httr),
+  require(cowplot),
+  require(patchwork)
 )
 
-for (pck in to_be_loaded) {
-  if (!require(pck, character.only = T)) {
-    install.packages(pck, repos="http://cran.rstudio.com/")
-    stopifnot(require(pck, character.only = T))
-  }  
-}
 ```
 
 
-# Objectives
-
-In Exploratory analysis of tabular data, bivariate analysis is the second step. It consists in exploring, summarizing, visualizing pairs of columns of a dataset.
 
 Bivariate techniques depend on the types of columns we are facing.
 

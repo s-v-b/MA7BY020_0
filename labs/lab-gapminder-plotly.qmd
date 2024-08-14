@@ -1,10 +1,14 @@
 ---
-# title: "LAB: datavis"
+title: "Data visualization with Plotly"
+categories: [Visualization, Rossling, gapminder, plotly, Grammar of Graphics]
+date: "`r Sys.time()`"
+
+
 format:
   html:
-    output-file: lab-gapminder.html
+    output-file: lab-gapminder-plotly.html
   pdf:
-    output-file: lab-gapminder.pdf
+    output-file: lab-gapminder-plotly.pdf
 
 execute: 
   eval: true
@@ -19,11 +23,10 @@ params:
   university: "Université Paris Cité"
   homepage: "https://stephane-v-boucheron.fr/courses/isidata"
   moodle: ""
+
+engine: knitr
 ---
 
-```{r}
-#| include: false
-```
 
 
 ::: {layout="[80,20]"}
@@ -71,6 +74,14 @@ for (pck in to_be_loaded) {
   }  
 }
 ```
+
+
+::: {.callout-important}
+
+### Objectives
+
+:::
+
 
 ## Grammar of Graphics
 

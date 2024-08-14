@@ -1,17 +1,19 @@
 ---
-# title: "LAB: Replay Gapminder with OECD data"
+title: "Data visualization for OECD data"
+categories: [Visualization, OECD, Grammar of Graphics, SDXM]
+date: "`r Sys.time()`"
+
 format:
   html:
-    output-file: lab-gapminder.html
+    output-file: lab-oecd-vis.html
     execute:
-      eval: true
+      eval: false
       echo: fenced
   pdf:
     include-in-header:
       - text: "\\lhead{{\\sf  Analyse  données \\\\ TP Datavis}}"
-    output-file: lab-gapminder.pdf
-  markdown:
-    output-file: toto.md
+    output-file: lab-oecd-vis.pdf
+
 
 
 execute: 
@@ -27,11 +29,9 @@ params:
   university: "Université Paris Cité"
   homepage: "https://stephane-v-boucheron.fr/courses/isidata"
   moodle: ""
----
 
-```{r}
-#| include: false
-```
+engine: knitr
+---
 
 
 ::: {layout="[80,20]"}
@@ -54,6 +54,13 @@ params:
 
 :::
 
+::: {.callout-important}
+
+### Objectives
+
+:::
+
+## Setup
 
 We will use the following packages. If needed, we install them.
 
@@ -63,22 +70,18 @@ We will use the following packages. If needed, we install them.
 #| message: false
 #| 
 
-to_be_loaded <- c("tidyverse", 
-                  "patchwork", 
-                  "glue", 
-                  "ggforce", 
-                  "plotly",
-                  "ggthemes",
-                  "gapminder",
-                  "ggrepel",
-                  "OECD")
+stopifnot(
+  require(tidyverse), 
+  require(patchwork), 
+  require(glue), 
+  require(ggforce), 
+  require(plotly),
+  require(ggthemes),
+  require(gapminder),
+  require(ggrepel),
+  require(OECD)
+)
 
-for (pck in to_be_loaded) {
-  if (!require(pck, character.only = T)) {
-    install.packages(pck, repos="http://cran.rstudio.com/")
-    stopifnot(require(pck, character.only = T))
-  }  
-}
 ```
 
 ## Grammar of Graphics
@@ -103,11 +106,8 @@ Grammar of Graphics approach
 
 ::: {.content-visible when-format="html"} 
 
-```{r}
-#| label: rossling
-#| eval: true
-knitr::include_url("https://www.youtube.com/embed/jbkSRLYSojo")
-```
+
+{{< video https://www.youtube.com/embed/jbkSRLYSojo >}}
 
 :::
 
@@ -129,7 +129,7 @@ We will produce the animated demonstration using
 
 ```{r}
 #| echo: true
-#| eval: true
+#| eval: false
 #| collapse: true
 ds <- OECD::get_datasets()
 OECD::search_dataset("REGION_DEMOGR", ds)
@@ -140,7 +140,7 @@ OECD::get_data_structure("REGION_DEMOGR")
 
 ```{r}
 #| echo: true
-#| eval: true
+#| eval: false
 #| collapse: true
 ds_qna <- OECD::get_dataset("QNA")
 ```
@@ -154,6 +154,7 @@ Mind reproducibility
 ### Dataframes `REGION_DEMOGR_...`
 
 ```{r}
+#| eval: false
 #| results: markup
 df <- readr::read_csv("../DATA/REGION_DEMOGR_12012024150444803.csv")
 
@@ -170,10 +171,12 @@ df %>%
 ### Dataframe `OECD.CFE.EDS,DSD_REG_DEMO@DF_LIFE_EXP...`
 
 ```{r}
+#| eval: false
 dt <- readr::read_csv("../DATA/OECD.CFE.EDS,DSD_REG_DEMO@DF_LIFE_EXP,1.0+all.csv")
 ```
 
 ```{r}
+#| eval: false
 dt %>% 
   glimpse()
 
@@ -194,10 +197,12 @@ dt <- dt %>%
 OECD offers different version of annula GDP data and components (income, expenditure, output, ...) in different currencies, with and without PPP.
 
 ```{r}
+#| eval: false
 df_gdp <- readr::read_csv('DATA/OECD.SDD.NAD,DSD_NAMAIN10@DF_TABLE1_EXPENDITURE_CPC,1.0+all.csv')
 ```
 
 ```{r}
+#| eval: false
 df_gdp %>% 
   glimpse()
 
@@ -211,10 +216,12 @@ df_gdp %>%
 ```
 
 ```{r}
+#| eval: false
 df_qdp <- readr::read_csv('DATA/OECD.SDD.NAD,DSD_NAMAIN1@DF_QNA_EXPENDITURE_CAPITA,1.0+all.csv')
 ```
 
 ```{r}
+#| eval: false
 df_qdp %>% 
   rename(gdp=OBS_VALUE,
          year=TIME_PERIOD) %>%
@@ -265,6 +272,7 @@ Extract/filter a subset of rows using `dplyr::filter(...)`
 ::: {.callout-tip title="solution"}
 
 ```{r}
+#| eval: false
 join_by()
 
 
@@ -295,6 +303,7 @@ the row index by a condition statement (a logical expression) also called a mask
 ```{r}
 #| label: gapminder_filtered
 #| results: markup
+#| eval: false
 gapminder_2002 <- gapminder[gapminder$year==2002, ]
 ```
 
@@ -347,6 +356,7 @@ Use `dplyr::filter()` to perform row filtering
 #| label: gapminder_filtered_dplyr
 #| results: markup
 #| 
+#| eval: false
 
 # filter(gapminder, year==2002)
 
@@ -379,7 +389,7 @@ The ability to use data masking is one of the great strengths of the `R` program
 ```{r}
 #| label: bad
 
-
+#| eval: false
 p <- gapminder_2002 %>%
   ggplot() 
 ```
@@ -401,6 +411,7 @@ call this object `p` for further reuse.
 
 ::: {.callout-tip title="solution"}
 ```{r}
+#| eval: false
 #| label: båd-1stlayer
 #| 
 p <- p +
@@ -424,6 +435,7 @@ and `lifeExp` to axes `x` and `y` (using `+` from `ggplot2`) .
 ```{r}
 #| label: bad-2ndlayer
 #| 
+#| eval: false
 p +
   geom_point()
 ```
@@ -475,6 +487,7 @@ We will add layers to the graphical object to complete the plot
 
 ```{r}
 #| label: better
+#| eval: false
 
 p <- p +
   aes(color=continent, size=pop) +
@@ -518,6 +531,7 @@ In order to pay tribute to Hans Rosling, we need to take care of two
 
 ```{r}
 #| label: better-with-scaling
+#| eval: false
 
 p <- p +
   scale_x_log10() +
@@ -547,7 +561,8 @@ Motivate the proposed scalings.
 
 ```{r}
 #| label: better-with-bad-scaling
- 
+#| eval: false
+
 p +
   scale_radius()
 
@@ -562,6 +577,7 @@ p +
 
 ```{r}
 #| label: better-with-bad-scaling-patchwork
+#| eval: false
 
 ptchwrk <- (p + ggtitle("scale_size_area")) + (p + scale_size() + ggtitle("scale")) 
 
@@ -589,6 +605,7 @@ ptchwrk + plot_annotation(
 
 ```{r}
 #| label: title
+#| eval: false
 yoi <- 2002
 
 p <-  p + 
@@ -628,6 +645,7 @@ What should be the respective purposes of Title, Subtitle, Caption, ... ?
 
 ```{r}
 #| label: theme_economist
+#| eval: false
 require("ggthemes")
 ```
 
@@ -648,6 +666,7 @@ gallery of available themes
 ```{r}
 #| lightbox: true
 #| label: theme_economist-out
+#| eval: false
 p +
   theme_economist()
 ```
@@ -659,6 +678,7 @@ Use `scale_color_manual(...)` to hand-tune the color aesthetic mapping.
 ```{r}
 #| label: theme_scale
 #| echo: fenced
+#| eval: false
 neat_color_scale <-
       c("Africa" = "#01d4e5",
         "Americas" = "#7dea01" ,
@@ -673,6 +693,7 @@ neat_color_scale <-
 
 ```{r}
 #| label: manual_color_scaling
+#| eval: false
 p <- p +
   scale_size_area(max_size = 15) + #<<
   scale_color_manual(values = neat_color_scale) #<<
@@ -697,6 +718,7 @@ Mimnimalist themes are often a good pick.
 
 ```{r}
 #| label: full-monty
+#| eval: false
 p <- p +
    scale_size_area(max_size = 15,
                   labels= scales::label_number(scale=1/1e6,
@@ -718,6 +740,7 @@ p + theme(legend.position = "none")
 ## Zooming on a continent
 
 ```{r}
+#| eval: false
 zoom_continent <- 'Europe'  # choose another continent at your convenience 
 ```
 
@@ -732,6 +755,7 @@ Use `facet_zoom()` from package `ggforce`
 ::: {.callout-tip title="solution"}
 
 ```{r}
+#| eval: false
 #| label: zoom_continent
 
 require("ggforce") #<<
@@ -756,6 +780,7 @@ p_zoom_continent
 
 ::: {.callout-tip title="solution"}
 ```{r}
+#| eval: false
 #| warning: false
 #| message: false
 #| label: plot_gap_minder_2002_labelled
@@ -803,7 +828,7 @@ We add a layer to the graphical object using `facet_wrap()`
 
 ```{r}
 #| label: facet
-#| 
+#| eval: false
 
 p <- p +
   aes(text=country) +
@@ -846,7 +871,7 @@ No
 
 ```{r}
 #| label: dryit
-#| 
+#| eval: false
 
 p %+% gapminder
 ```
@@ -866,9 +891,13 @@ Use `plotly::ggplotly()`
 
 ```{r}
 #| label: animate
-#| eval: !expr knitr::is_html_output()
+#| eval: false
 #| echo: fenced
 #| code-annotations: hover
+
+#### #| eval: !expr knitr::is_html_output()
+
+
 
 q <- filter(gapminder, FALSE) %>%
    ggplot() +
@@ -907,7 +936,9 @@ q <- filter(gapminder, FALSE) %>%
 
 ```{r}
 #| echo: fenced 
-#| eval: !expr knitr::is_html_output()
+#| eval: false
+
+#####| eval: !expr knitr::is_html_output()
 
 
 (p %+% gapminder +

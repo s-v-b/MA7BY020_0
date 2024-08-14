@@ -1,4 +1,6 @@
 ---
+title: "Babynames II: patterns of popularity"
+categories: [Babynames, Window functions]
 date: "`r Sys.time()`"
 
 execute:
@@ -66,6 +68,15 @@ stopifnot(
 :::
 
 :::
+
+::: {.callout-important}
+
+### Objectives
+
+:::
+
+
+## Setup
 
 
 ```{r}

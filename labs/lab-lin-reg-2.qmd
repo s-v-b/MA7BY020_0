@@ -1,5 +1,6 @@
 ---
-title: "Linear regression"
+title: "Linear regression II"
+categories: [Linear regression, OLS, Diagnostics]
 date: "`r Sys.time()`"
 
 execute:
@@ -29,13 +30,14 @@ engine: knitr
 #| message: false
 #| warning: false
 #| include: true
-#| 
-require(tidyverse)
-require(patchwork)
-require(httr)
-require(glue)
-require(broom)
 
+stopifnot(
+  require(tidyverse),
+  require(patchwork),
+  require(httr),
+  require(glue),
+  require(broom)
+)
 old_theme <- theme_set(theme_minimal())
 ```
 
@@ -58,6 +60,12 @@ old_theme <- theme_set(theme_minimal())
 
 :::
 
+::: {.callout-important}
+
+### Objectives
+
+
+:::
 
 
 # Linear fit using ordinary least squares (OLS)

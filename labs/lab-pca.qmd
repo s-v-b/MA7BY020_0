@@ -1,5 +1,8 @@
 ---
 date: "`r Sys.time()`"
+title: "PCA II: Swiss fertility data"
+categories: [PCA, SVD, Fertility data, SVD plots]
+
 
 execute:
   echo: true
@@ -30,11 +33,19 @@ engine: knitr
 #| include: true
 
 stopifnot(
-  require(tidyverse),
-  require(patchwork),
-  require(httr),
+  require(broom),
+  require(DT),
+  require(GGally),
+  require(ggforce),
+  require(ggfortify),
+  require(ggvoronoi),
   require(glue),
-  require(broom)
+  require(httr),
+  require(magrittr),
+  require(patchwork),
+  require(skimr),
+  require(tidymodels),
+  require(tidyverse)
 )
 
 old_theme <- theme_set(theme_minimal())
@@ -60,32 +71,7 @@ old_theme <- theme_set(theme_minimal())
 :::
 
 
-```{r}
-#| label: setup
-#| warning: false
-#| message: false
-#| echo: false
 
-stopifnot(
-  require(tidyverse),
-  require(DT),
-  require(skimr),
-  require(GGally),
-  require(broom),
-  require(patchwork),
-  require(ggforce),
-  require(glue),
-  require(ggfortify),
-  require(magrittr),
-  require(tidymodels),
-#   require(ggvoronoi),
-  require(ggforce)
-)
-
-tidymodels::tidymodels_prefer(quiet = TRUE)
-
-old_theme <-theme_set(theme_minimal(base_size=9, base_family = "Helvetica"))
-```
 
 <!-- [tidyverse conflicts](https://tidyverse.tidyverse.org/reference/tidyverse_conflicts.html) -->
 
@@ -111,6 +97,12 @@ knitr::opts_chunk$set(
 source(file = "../_UTILS/make_biotiful.R")
 ```
 
+::: {.callout-important}
+
+### Objectives
+
+:::
+
 
 Swiss fertility data
 ====================
@@ -131,7 +123,7 @@ The social and economic variables are *covariates* (*explanatory* variables).
 
 See [European Fertility Project](https://pop.princeton.edu/european-fertility-project#:-:text=switzerland) for more on this dataset.
 
-![](./IMG/Karte_Bezirke_der_Schweiz_farbig_2018.png)
+![](/images/Karte_Bezirke_der_Schweiz_farbig_2018.png)
 
 
 PCA (Principal Component Analysis) is concerned with covariates.

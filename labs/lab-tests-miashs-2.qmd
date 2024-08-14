@@ -1,6 +1,7 @@
 ---
 date: "`r Sys.time()`"
-
+title: Testing independence
+categories: [Test, Independence, Conditional Independence, Simpson, Chi-square]
 execute:
   echo: true
   eval: true
@@ -12,44 +13,41 @@ format:
   pdf:
     output-file: lab-test-miashs-2.pdf
 
+
+params:
+  truc: html
+  year: 2024 
+  curriculum: "M1 MIDS/MFA"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/scidon"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=13227"
+
 engine: knitr
 # server: shiny
 ---
 
-```{r}
-params = list(
-  truc= "Science des Données",
-  year= 2023 ,
-  curriculum= "L3 MIASHS",
-  university= "Université Paris Cité",
-  homepage= "https://stephane-v-boucheron.fr/courses/scidon",
-  moodle= "https://moodle.u-paris.fr/course/view.php?id=13227",
-  path_data = './DATA',
-  country_code= '...',
-  country= '...',
-  datafile= '...'
-  )
 
-attach(params)
-```
 
 ```{r}
 #| include: true
 #| message: false
 #| warning: false
-require(patchwork)
-require(glue)
-require(here)
-require(tidyverse)
-require(vcd)
-require(vcdExtra)
-require(ggmosaic)
-require(skimr)
-require(plotly)
-require(DT)
-require(GGally)
-require(ggforce)
-require(ggfortify)
+
+stopifnot(
+  require(patchwork),
+  require(glue),
+  require(here),
+  require(tidyverse),
+  require(vcd),
+  require(vcdExtra),
+  require(ggmosaic),
+  require(skimr),
+  require(plotly),
+  require(DT),
+  require(GGally),
+  require(ggforce),
+  require(ggfortify)
+)
 
 tidymodels::tidymodels_prefer(quiet = TRUE)
 
@@ -76,6 +74,12 @@ old_theme <-theme_set(theme_minimal(base_size=9, base_family = "Helvetica"))
 
 :::
 
+
+::: {.callout-important}
+
+### Objectives
+
+:::
 
 ```{r}
 #| label: setup
@@ -273,7 +277,7 @@ chisq.test(T) |>
 #| label: gss_mosaic
 #| 
 
-vcd::mosaic(T, shade=T)
+vcd::mosaic(T)
 ```
 
 :::::
@@ -361,7 +365,7 @@ UCB_2
 #| code-fold: true
 
 UCB_2 |> 
-  vcd::mosaic(shade=TRUE)
+  vcd::mosaic() 
 ```
 
 ```{r}
@@ -406,7 +410,7 @@ Visualize the three-way contingency table using double-decker plots from `vcd`
 #| code-fold: true
 
 aperm(UCBAdmissions, c(3, 2, 1)) |> 
-  vcd::mosaic(shade=T)
+  vcd::mosaic()
 ```
 
 ```{r}
@@ -451,7 +455,7 @@ UCBAdmissions |>
 
 UCBAdmissions |>  
   margin.table(margin=c('Gender', 'Dept')) |>
-  vcd::mosaic(shade=T)
+  vcd::mosaic()
 ```
 
 {{< fa hand-point-right >}} `Dept` and `Gender` are associated at every 

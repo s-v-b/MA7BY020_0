@@ -1,6 +1,9 @@
 ---
-title: 'Lab: Linear Regression'
+title: 'Linear regression I'
+categorie: [Linear regression, Linear correlation]
 date: "`r Sys.time()`"
+
+
 toc: true
 toc_depth: 2
 format:
@@ -26,21 +29,6 @@ params:
 engine: knitr
 ---
 
-```{r}
-#| label: setup-packages-foo
-#| message: false
-#| warning: false
-#| include: true
-#| 
-require(tidyverse)
-require(patchwork)
-require(httr)
-require(glue)
-require(broom)
-
-old_theme <- theme_set(theme_minimal())
-```
-
 ::: {layout="[80,20]"}
 
 ::: {#first-column}
@@ -60,45 +48,42 @@ old_theme <- theme_set(theme_minimal())
 
 :::
 
+::: {.callout-important}
 
-```{r setup-packages}
-#| echo: true
-#| warning: false
-#| message: false
-#| collapse: true
+### Objectives
 
-stopifnot(
-  require(tidyverse), 
-                  require(ggforce),
-                  require(broom),
-                  require(corrr),
-                  require(GGally),
-                  require(patchwork), 
-                  require(glue),
-                  require(magrittr),
-                  require(DT), 
-                  require(rlang),
-                  require(lobstr),
-                  require(skimr),
-                  require(gt),
-                  require(kableExtra),
-                  require(viridis),
-                  require(pryr)
-)
 
-# for (pck in to_be_loaded) {
-#   if (!require(pck, character.only = T)) {
-#     install.packages(pck, repos="http://cran.rstudio.com/")
-#     stopifnot(require(pck, character.only = T))
-#   }  
-# }
-```
+:::
 
+## Setup
 
 ```{r}
+#| label: setup-packages-foo
 #| message: false
-#| echo: false
-old_theme <-theme_set(theme_bw(base_size=9, base_family = "Helvetica"))
+#| warning: false
+#| include: true
+
+stopifnot(
+  require(broom),
+  require(corrr),
+  require(DT), 
+  require(GGally),
+  require(ggforce),
+  require(glue),
+  require(gt),
+  require(httr),
+  require(kableExtra),
+  require(lobstr),
+  require(magrittr),
+  require(patchwork),
+  require(pryr)
+  require(rlang),
+  require(skimr),
+  require(tidyverse),
+  require(viridis),
+)
+
+old_theme <- theme_set(theme_minimal())
 
 knitr::opts_chunk$set(
   message = FALSE,
@@ -112,7 +97,7 @@ knitr::opts_chunk$set(
 ```
 
 
-
+## Dataset
 
 Dataset `Banque.csv` contains information on clerical officers in the Banking sector. We aim at investigating connections between variables.
 

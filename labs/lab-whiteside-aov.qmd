@@ -1,5 +1,7 @@
 ---
 date: "`r Sys.time()`"
+title: "Linear regression: ANOVA"
+categories: [Linear Regression, ANOVA, Variable selection]
 
 execute:
   echo: true
@@ -30,13 +32,15 @@ standalone: true
 #| include: false
 #| warning: false
 #| message: false
-require(tidyverse)
-require(broom)
-require(tidymodels)
-require(DT)
-require(MASS)
-require(magrittr)
 
+stopifnot(
+  require(tidyverse),
+  require(broom),
+  require(tidymodels),
+  require(DT),
+  require(MASS),
+  require(magrittr)
+)
 
 whiteside <- MASS::whiteside
 
@@ -52,6 +56,12 @@ old_options <- options(digits = 3,
 ```{r}
 theme_set(theme_minimal())
 ```
+
+::: {.callout-important}
+
+### Objectives
+
+:::
 
 
 ```{r}
@@ -450,7 +460,7 @@ Draw the disgnostic plots for this model
 ::::: {.content-visible when-profile="solution"}  
 
 ```{r}
-source('../UTILS/my_diag_plots.R')
+source('../_UTILS/my_diag_plots.R')
 ```
 
 ```{r}

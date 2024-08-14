@@ -1,5 +1,7 @@
 ---
 date: "`r Sys.time()`"
+title: "Life Tables: 1948-2006"
+categories: [Life tables, Mortality quotients, Life Expectancy, 1948-2006]
 
 execute:
   echo: true
@@ -78,9 +80,13 @@ old_theme <- theme_set(theme_minimal())
 
 :::
 
+::: {.callout-important}
 
+### Objectives
 
-# Loading
+:::
+
+## Loading
 
 ```{r coding_tables}
 #| echo: false

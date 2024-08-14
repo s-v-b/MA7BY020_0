@@ -1,5 +1,8 @@
 ---
 date: "`r Sys.time()`"
+title: "Clustering: hierarchical"
+categories: [Clustering, Hierarchical clustering, Dendrograms, ]
+
 
 execute:
   echo: true
@@ -47,6 +50,9 @@ engine: knitr
 :::
 
 :::
+
+
+## Setup 
 
 ```{r}
 #| echo: true
@@ -102,6 +108,13 @@ gc <- options(ggplot2.discrete.fill="viridis")
 gc <- options(ggplot2.continuous.fill="viridis")
 gc <- options(ggplot2.continuous.colour="viridis")
 ```
+
+::: {.callout-important}
+
+### Objectives
+
+:::
+
 
 Preamble
 ========

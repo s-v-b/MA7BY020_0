@@ -1,5 +1,7 @@
 ---
 date: "`r Sys.time()`"
+title: "Testing Bernoulli and Binomial parameters"
+categories: [Test, Goodness-of-fit, Bernoulli parameter, Sex ratio, Chi-square]
 
 execute:
   echo: true
@@ -12,40 +14,37 @@ format:
   pdf:
     output-file: lab-test-miashs.pdf
 
+params:
+  truc: html
+  year: 2024 
+  curriculum: "M1 MIDS/MFA"
+  university: "Université Paris Cité"
+  homepage: "https://stephane-v-boucheron.fr/courses/scidon"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=13227"
+  
 engine: knitr
 # server: shiny
 ---
 
-```{r}
-params = list(
-  truc= "Science des Données",
-  year= 2023 ,
-  curriculum= "L3 MIASHS",
-  university= "Université Paris Cité",
-  homepage= "https://stephane-v-boucheron.fr/courses/scidon",
-  moodle= "https://moodle.u-paris.fr/course/view.php?id=13227",
-  path_data = './DATA',
-  country_code= '...',
-  country= '...',
-  datafile= '...'
-  )
 
-attach(params)
-```
+
 
 ```{r}
 #| include: true
 #| message: false
 #| warning: false
-require(patchwork)
-require(glue)
-require(here)
-require(tidyverse)
-require(plotly)
-require(DT)
-require(GGally)
-require(ggforce)
-require(ggfortify)
+
+stopifnot(
+  require(patchwork),
+  require(glue),
+  require(here),
+  require(tidyverse),
+  require(plotly),
+  require(DT),
+  require(GGally),
+  require(ggforce),
+  require(ggfortify)
+)
 
 tidymodels::tidymodels_prefer(quiet = TRUE)
 
@@ -82,12 +81,19 @@ old_theme <-theme_set(theme_minimal(base_size=9, base_family = "Helvetica"))
 
 ```
 
+::: {.callout-important}
+
+### Objectives
+
+:::
+
 ## Hypothesis testing
 
  
 Download 'Naissances totales par sexe' from URL `https://www.ined.fr/fichier/s_rubrique/168/t35.fr.xls` from [INED](https://www.ined.fr/).
 
 ```{r}
+path_data <- 'DATA'
 births_fr_path <- here(path_data, 't35.fr.xls')
 births_fr_url <- 'https://www.ined.fr/fichier/s_rubrique/168/t35.fr.xls'
 

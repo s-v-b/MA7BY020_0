@@ -1,5 +1,7 @@
 ---
 title: "Introduction to Life Tables"
+date: "`r Sys.time()`"
+categories: [Life tables, Mortality quotients, Life Expectancy]
 
 format:
   html:
@@ -25,7 +27,6 @@ params:
 
 ::: {#first-column}
 
-{{< meta title >>}}
 
 - **`r stringr::str_glue('{params$curriculum}')`**
 - **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
@@ -41,6 +42,14 @@ params:
 
 :::
 
+::: {.callout-important}
+
+### Objectives
+
+:::
+
+
+## Setup
 
 ```{r}
 #| label: setup

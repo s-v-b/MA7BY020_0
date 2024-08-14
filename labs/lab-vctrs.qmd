@@ -1,5 +1,6 @@
 ---
-title: Vectors in  R
+title: "R programming: vectors"
+categories: [R programming, S3 vectors, vctrs]
 date: "`r Sys.time()`"
 
 execute:

@@ -1,5 +1,7 @@
 ---
 date: "`r Sys.time()`"
+title: "Clustering: k-means"
+categories: [Clustering, k-means, Lloyd's Algorithm]
 
 execute:
   echo: true
@@ -48,6 +50,13 @@ engine: knitr
 
 :::
 
+::: {.callout-important}
+
+### Objectives
+
+:::
+
+## Setup
 ```{r}
 #| echo: true
 #| message: false

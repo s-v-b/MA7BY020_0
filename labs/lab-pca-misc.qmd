@@ -1,6 +1,7 @@
 ---
 date: "`r Sys.time()`"
-
+title: "PCA I: Up and running"
+categories: [PVA, svd, broom, SVD plots]
 execute:
   echo: true
   eval: true
@@ -28,12 +29,18 @@ engine: knitr
 #| message: false
 #| warning: false
 #| include: true
-#| 
-require(tidyverse)
-require(patchwork)
-require(httr)
-require(glue)
-require(broom)
+
+stopifnot(
+  require(broom),
+  require(FactoInvestigate),
+  require(FactoMineR),
+  require(ggfortify),
+  require(ggrepel),
+  require(glue),
+  require(httr),
+  require(patchwork),
+  require(tidyverse)
+)
 
 old_theme <- theme_set(theme_minimal())
 ```
@@ -57,14 +64,13 @@ old_theme <- theme_set(theme_minimal())
 
 :::
 
+::: {.callout-important}
+
+### Objectives 
+
+:::
 
 ```{r}
-require(FactoMineR)
-require(FactoInvestigate)
-require(ggrepel)
-require(ggfortify)
-require(broom)
-
 opts <- options()  # save old options
 
 options(ggplot2.discrete.colour="viridis")

@@ -1,5 +1,6 @@
 ---
-title: 'LAB: Univariate analysis'
+title: 'Univariate analysis I'
+categories: [Univariate analysis, Numerical data, Boxplots, ECDF, Histograms, Quantiles, GSS]
 date: "`r Sys.time()`"
 
 
@@ -46,49 +47,37 @@ params:
 
 :::
 
+::: {.callout-important}
 
-# Univariate numerical samples
+### Objectives
+
+In Exploratory analysis of tabular data, univariate analysis is the first step. It consists in exploring, summarizing, visualizing columns of a dataset.
+
+:::
+
+## Setup
 
 ```{r setup-packages}
 #| warning: false
 #| message: false
 #| collapse: true
 
-to_be_loaded <- c("tidyverse", 
-                  "magrittr",
-                  "skimr",
-                  "lobstr"
+stopifnot(
+  require(tidyverse), 
+                  require(magrittr),
+                  require(skimr),
+                  require(lobstr)
 )
 
-for (pck in to_be_loaded) {
-  if (!require(pck, character.only = T)) {
-    install.packages(pck, repos="http://cran.rstudio.com/")
-    stopifnot(require(pck, character.only = T))
-  }  
-}
+
 ```
 
 ```{r}
 cat(getwd())
 ```
 
-# Useful links
 
-- [rmarkdown](bookdown.org/yihui/rmarkdown)
-- [dplyr](https://gplot2.tidyverse.org)
-- [ggplot2](https://ggplot2.tidyverse.org)
-- *R Graphic Cookbook*. Winston Chang. O' Reilly.
-- [A blog on ggplot object](https://www.data-imaginist.com/2017/Beneath-the-canvas/)
-- [`skimr`]()
-
-# Objectives
-
-In Exploratory analysis of tabular data, univariate analysis is the first step. It consists in exploring, summarizing, visualizing columns of a dataset.
-
-In common circumstances, table wrangling is a prerequisite.   
-
-Then, univariate techniques depend on the kind of columns we are facing.
-
+## Univariate numerical samples visualization
 
 For *numerical* samples/columns, to name a few:
 
@@ -695,3 +684,13 @@ patchwork::wrap_plots(list_plots)
 :::::
 
 :::
+
+
+# Useful links
+
+- [rmarkdown](bookdown.org/yihui/rmarkdown)
+- [dplyr](https://gplot2.tidyverse.org)
+- [ggplot2](https://ggplot2.tidyverse.org)
+- *R Graphic Cookbook*. Winston Chang. O' Reilly.
+- [A blog on ggplot object](https://www.data-imaginist.com/2017/Beneath-the-canvas/)
+- [`skimr`]()

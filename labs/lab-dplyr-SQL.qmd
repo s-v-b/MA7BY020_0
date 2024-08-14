@@ -1,7 +1,7 @@
 ---
-title: 'LAB: dplyr and SQL'
+title: 'Table manipulations I: dplyr and SQL'
 date: "`r Sys.time()`"
-
+categories: [SQL, dplyr, nycflights13,]
 
 execute:
   echo: true
@@ -53,31 +53,28 @@ params:
 #| message: false
 #| collapse: true
 
-to_be_loaded <- c("tidyverse", 
-                  "glue",
-                  "cowplot",
-                  "patchwork",
-                  "nycflights13",
-                  "DBI",
-                  "RSQLite",
-                  "RPostgreSQL",
-                  "dtplyr",
-                  "dbplyr"
+stopifnot(
+  require(tidyverse), 
+  require(glue),
+  require(cowplot),
+  require(patchwork),
+  require(nycflights13),
+  require(DBI),
+  require(RSQLite),
+  require(RPostgreSQL),
+  require(dtplyr),
+  require(dbplyr)
 )
 
-for (pck in to_be_loaded) {
-  if (!require(pck, character.only = T)) {
-    install.packages(pck, repos="http://cran.rstudio.com/")
-    stopifnot(require(pck, character.only = T))
-  }  
-}
-```
-
-```{r}
 old_theme <- theme_set(theme_minimal())
 ```
 
-# Objectives
+::: {.callout-important}
+
+### Objectives
+
+:::
+
 
 From the [Documentation](https://dplyr.tidyverse.org/index.html)
 
@@ -93,7 +90,7 @@ From the [Documentation](https://dplyr.tidyverse.org/index.html)
 
 We will play with the [`nycflights13`]() dataset
 
-![NYCFlights13](./IMG/nycflights_layout_crop.png){width="80%"}
+![NYCFlights13](/images/nycflights_layout_crop.png){width="80%"}
 
 # Loading `nycflights`
 

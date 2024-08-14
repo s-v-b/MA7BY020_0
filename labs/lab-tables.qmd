@@ -1,34 +1,29 @@
 ---
-# title: "LAB: Tables manipulation"
+title: "Tables manipulation II"
+categories: [Tables, tibbles, dplyr, SQL, Relational Algebra, nycflights13]
+
+execute:
+  echo: true
+  eval: true
+  collapse: true
+
 format:
   html:
     output-file: lab-tables.html
-    execute:
-      eval: true
-      echo: fenced
   pdf:
-    include-in-header:
-      - text: "\\lhead{{\\sf  EDA \\\\ TP Tables}}"
     output-file: lab-tables.pdf
 
-
-
-execute: 
-  eval: true
-  echo: fenced
-  collapse: true
-  
-  
 params:
   truc: html
   year: 2024 
-  curriculum: "M1 MIDS & MFA"
+  curriculum: "M1 MIDS/MFA"
   university: "Université Paris Cité"
-  homepage: "https://stephane-v-boucheron.fr/courses/isidata"
-  moodle: ""
-
+  homepage: "https://stephane-v-boucheron.fr/courses/scidon"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=13227"
+  
 engine: knitr
 ---
+
 
 
 ::: {layout="[80,20]"}
@@ -59,7 +54,9 @@ engine: knitr
 
 :::
 
-## Packages installation and loading  (again)
+
+
+## Setup
 
 We will use the following packages. If needed, we install them. 
 ```{r}
@@ -67,24 +64,21 @@ We will use the following packages. If needed, we install them.
 #| message: false
 #| warning: false
 #| include: false
-to_be_loaded <- c("tidyverse", 
-                  "lobstr",
-                  "ggforce",
-                  "nycflights13",
-                  "patchwork", 
-                  "glue",
-                  "DT", 
-                  "viridis",
-                  "sqldf", 
-                  "dbplyr",
-                  "dtplyr")
+stopifnot(
+  require(tidyverse), 
+                  require(lobstr),
+                  require(ggforce),
+                  require(nycflights13),
+                  require(patchwork), 
+                  require(glue),
+                  require(DT), 
+                  require(viridis),
+                  require(sqldf), 
+                  require(dbplyr),
+                  require(dtplyr)
+                  )
 
-for (pck in to_be_loaded) {
-  if (!require(pck, character.only = T)) {
-    install.packages(pck, repos="http://cran.rstudio.com/")
-    stopifnot(require(pck, character.only = T))
-  }  
-}
+
 ```
 
 
@@ -273,6 +267,7 @@ airlines %>%
 ```
 
 ```{r}
+#| eval: false
 airlines_lite %>% 
   filter(stringr::str_starts(name, "United") |
         stringr::str_starts(name, "American") |
@@ -339,6 +334,7 @@ airlines %>%
 
 
 ```{r}
+#| eval: false
 airlines_lite %>% 
   filter(stringr::str_starts(name, "United") |
         stringr::str_starts(name, "American") |

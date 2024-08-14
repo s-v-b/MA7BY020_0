@@ -1,5 +1,6 @@
 ---
-title: 'LAB: Univariate analysis II'
+title: 'Univariate analysis II'
+categories: [Univariate analysis, Categorical data, Factors, Column plots, Bar plots]
 date: "`r Sys.time()`"
 
 
@@ -42,7 +43,23 @@ params:
 
 :::
 
-::: {.callout-note collapse="true"}
+::: {.callout-important}
+
+### Objectives
+
+In this lab, we pursue our walk in univariate analysis, by introducing univariate analysis for categorical variables.
+
+This amounts to exploring, summarizing, visualizing *categorical* columns of a dataset.
+
+This also often involves table wrangling: retyping some columns, relabelling, reordering, lumping levels of factors, that is factor re-engineering. 
+
+
+:::
+
+
+
+
+## Setup 
 
 Try to load (potentially) useful packages in a chunk at the beginning of your file.
 
@@ -52,23 +69,18 @@ Try to load (potentially) useful packages in a chunk at the beginning of your fi
 #| code-fold: true
 #| collapse: true
 
-to_be_loaded <- c("tidyverse", 
-                  "lobstr", 
-                  "ggforce",
-                  "patchwork", 
-                  "glue",
-                  "magrittr",
-                  "DT", 
-                  "lobstr",
-                  "kableExtra",
-                  "viridis")
-
-for (pck in to_be_loaded) {
-  if (!require(pck, character.only = T)) {
-    install.packages(pck, repos="http://cran.rstudio.com/")
-    stopifnot(require(pck, character.only = T))
-  }  
-}
+stopifnot(
+  require(tidyverse), 
+  require(lobstr), 
+  require(ggforce),
+  require(patchwork), 
+  require(glue),
+  require(magrittr),
+  require(DT), 
+  require(lobstr),
+  require(kableExtra),
+  require(viridis)
+)
 ```
 
 Set the (graphical) theme
@@ -77,7 +89,7 @@ Set the (graphical) theme
 old_theme <- theme_set(theme_minimal())
 ```
 
-:::
+
 
 
 ::: {.callout-tip}
@@ -94,16 +106,15 @@ getwd() # Where are we?
 head(list.files())  # List the files in the current directory
 head(list.dirs())   # List sub-directories
 ```
+
 :::
 
 
-# Objectives
+::: {.callout-tip}
 
-In this lab, we pursue our walk in univariate analysis, by introducing univariate analysis for categorical variables.
+### Use package `fs` for files maniulations
 
-This amounts to exploring, summarizing, visualizing *categorical* columns of a dataset.
-
-This also often involves table wrangling: retyping some columns, relabelling, reordering, lumping levels of factors, that is factor re-engineering. 
+:::
 
 Summarizing univariate categorical samples amounts to counting the number of occurrences of levels in the sample. 
 

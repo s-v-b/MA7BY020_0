@@ -1,5 +1,6 @@
 ---
 title: "Linear regression, diagnostics, variable selection"
+categories: [Linear regression, Diagnostics, Formula]
 date: "`r Sys.time()`"
 
 execute:
@@ -43,6 +44,12 @@ engine: knitr
 ::: {#second-column}
 ![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
 :::
+
+:::
+
+::: {.callout-important}
+
+### Objectives
 
 :::
 

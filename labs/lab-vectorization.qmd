@@ -1,6 +1,7 @@
 ---
-title: Vectorization in  R
+title: "R programming: vectorization"
 date: "`r Sys.time()`"
+categories: [R programming, vectorization, functional programming]
 
 execute:
   echo: true

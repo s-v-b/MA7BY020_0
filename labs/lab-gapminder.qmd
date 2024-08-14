@@ -1,5 +1,8 @@
 ---
-# title: "LAB: datavis"
+title: "Data visualization"
+categories: [Visualization, Rosling, gapminder, ggplot2, Grammar of Graphics]
+date: "`r Sys.time()`"
+
 format:
   html:
     output-file: lab-gapminder.html
@@ -28,7 +31,6 @@ params:
 
 ::: {#first-column}
 
-{{< meta title >>}}
 
 - **`r stringr::str_glue('{params$curriculum}')`**
 - **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
@@ -45,32 +47,19 @@ params:
 :::
 
 
-We will use the following packages. If needed, we install them.
 
-```{r}
-#| label: setup-packages
-#| warning: false
-#| message: false
-#| 
+::: {.callout-important}
 
-to_be_loaded <- c("tidyverse", 
-                  "patchwork", 
-                  "glue", 
-                  "ggforce", 
-                  "plotly",
-                  "ggthemes",
-                  "gapminder",
-                  "ggrepel")
+### Objectives
 
-for (pck in to_be_loaded) {
-  if (!require(pck, character.only = T)) {
-    install.packages(pck, repos="http://cran.rstudio.com/")
-    stopifnot(require(pck, character.only = T))
-  }  
-}
+This workbook introduces visualization according to the *Grammar of Graphics* framework.  
 
+Using `ggplot2`, we reproduce Rosling's `gapminder` talk. 
 
-```
+This is an opportunity to develop the layered construction of graphical objects.
+
+:::
+
 
 ## Grammar of Graphics
 
@@ -80,7 +69,7 @@ The expression *Grammar of Graphics* was coined by [Leiland
 Wilkinson](https://en.wikipedia.org/wiki/Leland_Wilkinson) to describe a
 principled approach to visualization in Data Analysis (EDA)
 
-A plot is organized around data (a table with rows (observations) and
+A plot is organized around tabular data (a table with rows (observations) and
 columns (variables))
 
 A *plot* is a *graphical object* that can be built *layer* by *layer*
@@ -96,9 +85,12 @@ Grammar of Graphics approach
 
 ```{r}
 #| label: rossling
-#| eval: true
+#| eval: false
+#| echo: false
 knitr::include_url("https://www.youtube.com/embed/jbkSRLYSojo")
 ```
+
+{{< video  https://www.youtube.com/embed/jbkSRLYSojo >}}
 
 :::
 
@@ -111,24 +103,68 @@ Visit [https://www.youtube.com/embed/jbkSRLYSojo](https://www.youtube.com/embed/
 
 We will reproduce the animated demonstration using
 
--   `ggplot2`: an implementation of *grammar of graphics* in \`R
--   `plotly`: a bridge between `R` and the javascript library `D3.js`
+-   [`ggplot2`](https://ggplot2.tidyverse.org): an implementation of *grammar of graphics* in \`R
+-   [`plotly`](https://plotly.com/r/): a bridge between `R` and the javascript library [`D3.js`](https://d3js.org)
 -   Using `plotly`, opting for `html` ouput, brings the possibility of
     interactivity and animation
 
-## Install and load packages
+## Setup
+
+We will use the following packages. If needed, we install them.
 
 ```{r}
-#| label: load_gapminder_again
-#| echo: true
-require("gapminder")
+#| label: setup-packages
+#| warning: false
+#| message: false
+#| 
+
+stopifnot(
+  require(tidyverse), 
+  require(patchwork), 
+  require(glue), 
+  require(ggforce), 
+  require(plotly),
+  require(ggthemes),
+  require(gapminder),
+  require(ggrepel)
+)
 ```
 
-Insist on the difference between *installing* and *loading* a package
+The data we will use can be obtained by loading package `gapminder`
 
--   How do we get the list of installed packages?
--   How do we get the list of loaded packages?
+::: {.callout-tip}
+
+### Tip
+
+If the packages have not yet been installed on your hard drive, install them.
+
+You can do that using base `R` `install.packages()` function: 
+
+```{.r}
+install.packages("tidyverse")
+```
+
+It is often faster to use functions from package `pak`
+
+```{.r}
+install.packages("pak")
+pak::pkg_install("tidyverse")
+```
+
+:::
+
+You need to understand the difference between *installing* and *loading* a package
+
+::: {.callout-note}
+
+### Question
+
+-   How do we get the list of *installed* packages?
+-   How do we get the list of *loaded* packages?
 -   Which objects are made available by a package?
+
+:::
+
 
 ::: {.content-visible when-profile="solution"} 
 
@@ -144,9 +180,7 @@ df <- installed.packages()
 head(df)
 ```
 
-Note that the output is tabular (it is a `matrix` and an `array`) that contains much more than the names of 
-installed packages. If we just want the names of the installed packages, we can 
-extract the column named `Package`. 
+Note that the output is tabular (it is a `matrix` and an `array`) that contains much more than the names of installed packages. If we just want the names of the installed packages, we can  extract the column named `Package`. 
 
 ```{r}
 #| collapse: true
@@ -154,11 +188,9 @@ extract the column named `Package`.
 df[1:5, c("Package", "Version") ]
 ```
 
-Matrices and arrays represent mathematical object and are fit for computations. They 
-are not so convenient as far as querying is concerned. Dataframes which are also tabular objects can be queried like tables in a relational database. 
+Matrices and arrays represent mathematical object and are fit for computations. They are not so convenient as far as querying is concerned. Dataframes which are also tabular objects can be queried like tables in a relational database. 
 
-Loading a package amounts to make a number of objects available in the current session.
-The objects are made available though `Namespaces`.
+Loading a package amounts to make a number of objects available in the current session. The objects are made available though `Namespaces`.
 
 ```{r}
 #| collapse: true
@@ -167,13 +199,6 @@ loadedNamespaces()
 ```
 
 Note that we did not load explicitly some of the `loadedNamespaces`.
-
-```{r}
-#| collapse: true
-#| echo: true
-setdiff(loadedNamespaces(), to_be_loaded)
-```
-
 Many of the loaded packages were loaded while loading other packages, for 
 example metapackages like `tidyverse`. 
 
@@ -183,14 +208,29 @@ example metapackages like `tidyverse`.
 
 ## Have a look at `gapminder` dataset
 
--   A table has a *schema*: a list of named *columns*, each with a given
-    type
--   A table has a *content*: *rows*. Each row is a collection of items,
-    corresponding to the columns
--   `glimpse()` allows to see the schema and the first rows
--   `head()` allows to see the first rows
+The `gapminder` table can be found at `gapminder::gapminder`
+
+-   A table has a *schema*: a list of named *columns*, each with a given type
+-   A table has a *content*: *rows*. Each row is a collection of items,  corresponding to the columns
+
+
+::: {.callout-note}
+
+
+### Question
+
+Explore `gapminder::gapminder`, using `glimpse()`  and `head()`
+
+- `glimpse()` allows to see the schema and the first rows
+- `head()` allows to see the first rows
+- Use the pipe `|>` to chain operations
+
+:::
+
+
 
 ::: {.content-visible when-profile="solution"} 
+
 ::: {.callout-tip title="solution"} 
 
 Dataframes 
@@ -215,13 +255,16 @@ Even an empty dataframe has a scheme:
 ```{r}
 gapminder |> 
   head(0) |> 
-  glimpse()  
-glimpse(head(gapminder, 0))
+  glimpse()
+  
+# glimpse(head(gapminder, 0))
 ```
 
 :::
 
 :::
+
+
 
 ::: {.content-visible when-profile="solution"} 
 
@@ -247,7 +290,14 @@ gapminder |>
 
 ## Get a feeling of the dataset
 
+::: {.callout-note}
+
+### Question
+
 Pick two random rows for each continent using `slice_sample()`
+
+
+:::
 
 ::: {.content-visible when-profile="solution"} 
 
@@ -263,9 +313,9 @@ gapminder |>
   slice_sample(n=2, by=continent)
 
 #< or equivalently 
-gapminder |> 
-  group_by(continent) |> 
-  slice_sample(n=2)
+# gapminder |> 
+#   group_by(continent) |> 
+#   slice_sample(n=2)
 ```
 
 :::
@@ -273,12 +323,30 @@ gapminder |>
 :::
 
 
+::: {.callout-note}
+
+### Question
+
 What makes a table *tidy*?
+
+:::
+
+::: {.callout-tip}
+
+### Tip 
 
 Have a look at [Data tidying in R for Data Science (2nd
 ed.)](https://r4ds.hadley.nz/data-tidy.html)
 
+:::
+
+::: {.callout-note}
+
+### Question
+
 Is the `gapminder` table redundant?
+
+:::
 
 
 ::: {.content-visible when-profile="solution"} 
@@ -296,7 +364,17 @@ Table `gapminder` is not in Boyce-Codd Normal Form (BCNF), not even in Third Nor
 
 ## Gapminder tibble (extract)
 
+::: {.callout-note}
+
+### Question
+
 Extract/filter a subset of rows using `dplyr::filter(...)`
+
+- All rows concerning a given country
+- All rows concerning a year
+- All rows concerning a given continnent and a year
+  
+:::
 
 ::: {.content-visible when-profile="solution"} 
 
@@ -310,7 +388,15 @@ gapminder |>
   head()
 ```
 
-Note that equality testing is performed using `==` not `=` (which is used to implement assignment)
+
+
+:::
+
+::: {.callout-caution}
+
+### {{< fa triangle-exclamation >}}
+
+Equality testing is performed using `==`, not `=` (which is used to implement assignment)
 
 :::
 
@@ -320,7 +406,7 @@ Note that equality testing is performed using `==` not `=` (which is used to imp
 ## Filtering (selection $σ$ from database theory) : Picking one year of data
 
 
-There is simple way to filter  rows satisfying some condition. It consists 
+There is simple way to filter rows satisfying some condition. It consists 
 in mimicking indexation in a matrix, leaving the colum index empty, replacing 
 the row index by a condition statement (a logical expression) also called a mask.  
 
@@ -334,8 +420,7 @@ Have a look at `gapminder$year==2002`. What is the type/class of this expression
 
 This is possible in base `R` and very often convenient. 
 
-Nevertheless, this way of performing row filtering does not emphasize the connection
-between the dataframe  and the condition. Any logical vector with the right length could be used as a mask. Moreover, this way of performing filtering is not very functional.
+Nevertheless, this way of performing row filtering does not emphasize the connection between the dataframe  and the condition. Any logical vector with the right length could be used as a mask. Moreover, this way of performing filtering is not very functional.
 
 
 
@@ -345,10 +430,7 @@ In the parlance of Relational Algebra, `filter` performs a *selection*
 of rows. Relational expression
 $$σ_{\text{condition}}(\text{Table})$$ translates to
 
-```{r}
-#| label: filter-selection
-#| eval: false
-#| results: markup
+```{.r}
 filter(Table, condition)
 ```
 
@@ -356,7 +438,7 @@ where $\text{condition}$ is a boolean expression that can be evaluated
 on each row of $\text{Table}$. In `SQL`, the relational expression would
 translate into
 
-```{verbatim}
+```{.sql}
 SELECT *
 FROM Table
 WHERE condition
@@ -386,21 +468,34 @@ gapminder |>
   filter(year==2002)
 ```
 
-Note that in stating the condition, we simply write `year==2002` even though 
-`year` is not the name of an object in our current session. This is possible because
-`filter( )` uses *data masking*, `year` is meant to denote a column in `gapminder`.
-
-The ability to use data masking is one of the great strengths of the `R` programming language.
 
 
 :::::
+
+::: {.callout-important}
+
+### Data masking
+
+Note that in stating the condition, we simply write `year==2002` even though 
+`year` is not the name of an object in our current session. This is possible because `filter( )` uses *data masking*, `year` is meant to denote a column in `gapminder`.
+
+The ability to use data masking is one of the great strengths of the `R` programming language.
+
+:::
+
 
 :::
 
 ## Static plotting: First attempt
 
+::: {.callout-note}
 
--   Define a plot with respect to `gapminder_2002`
+### Question
+
+Define a plot with respect to `gapminder_2002` along the lines suggested 
+by Rosling's presentation. 
+
+:::
 
 ::: {.content-visible when-profile="solution"} 
 
@@ -427,7 +522,14 @@ call this object `p` for further reuse.
 
 :::
 
--   Map variables `gdpPercap` and `lifeExp` to axes `x` and `y`
+::: {.callout-note}
+
+### Question
+
+Map variables `gdpPercap` and `lifeExp` to axes `x` and `y`. Define the axes. 
+In `ggplot2` parlance, this is called *aesthetic mapping*.  Use `aes()`.
+
+:::
 
 ::: {.content-visible when-profile="solution"} 
 
@@ -437,6 +539,7 @@ call this object `p` for further reuse.
 #| 
 p <- p +
   aes(x=gdpPercap, y=lifeExp)
+
 p 
 ```
 
@@ -451,29 +554,39 @@ and `lifeExp` to axes `x` and `y` (using `+` from `ggplot2`) .
 
 :::
 
--   For each row, draw a point at coordinates defined by the mapping
+::: {.callout-note}
+
+### Question
+
+For each row, draw a point at coordinates defined by the mapping. 
+You need to add a `geom_` layer to your `ggplot` object, in this case
+`geom_point()` will do.
+
+
+:::
 
 ::: {.content-visible when-profile="solution"} 
 
 ::: {.callout-tip title="solution"}
 
+We add another layer to our graphical object.
+
 ```{r}
 #| label: bad-2ndlayer
 #| 
-p +
+p <- p +
   geom_point()
+
+p
 ```
 
 :::
 
 :::
 
-::: {.callout-note collapse="true"}
+::: {.callout-note}
 
-You need to add a `geom_` layer to your `ggplot` object, in this case
-`geom_point()` will do.
-
-:::
+### What's up?
 
 We are building a graphical object (a `ggplot` object) around a data
 frame (`gapminder`)
@@ -488,24 +601,34 @@ The global aesthetic mapping defines which columns are
 
 Geometries and Statistics describe the building blocks of graphics
 
+:::
+
+
 ### What's missing here?
 
 when comparing to the Gapminder demonstration, we can spot that
 
--   colors are missing
+-   colors are missing {{< fa face-frown >}}
 -   bubble sizes are all the same. They should reflect the population
     size of the country
 -   titles and legends are missing. This means the graphic object is
     useless.
 
-We will add layers to the graphical object to complete the plot
+We will add other layers to the graphical object to complete the plot
 
 ## Second attempt: display more information
+
+::: {.callout-note}
+
+### Question
 
 -   Map `continent` to color (use `aes()`)
 -   Map `pop` to bubble size (use `aes()`)
 -   Make point transparent by tuning `alpha` (inside `geom_point()`
     avoid *overplotting*)
+
+
+:::
 
 ::: {.content-visible when-profile="solution"} 
 
@@ -550,6 +673,12 @@ In order to pay tribute to Hans Rosling, we need to take care of two
 -   the *area* of the point should be proportional to the population
     `scale_size_area()`
 
+::: {.callout-note}
+
+### Complete the graphical object accordingly
+
+:::
+
 ::: {.content-visible when-profile="solution"} 
 
 ::: {.callout-tip title="solution"}
@@ -569,7 +698,9 @@ p
 :::
 
 
-::: {.callout-caution collapse="true"}
+::: {.callout-note}
+
+### Question
 
 Motivate the proposed scalings.
 
@@ -600,6 +731,8 @@ p +
 
 ::: {.callout-tip title="solution"}
 
+We use package `patchwork` to collect and present several graphical objects.
+
 ```{r}
 #| label: better-with-bad-scaling-patchwork
 
@@ -618,11 +751,18 @@ ptchwrk + plot_annotation(
 
 ## In perspective
 
+::: {.callout-note}
+
+### Question
+
 -   Add a plot title
 -   Make axes titles
     -   explicit
     -   readable
 -   Use `labs(...)`
+
+
+:::
 
 ::: {.content-visible when-profile="solution"} 
 
@@ -653,30 +793,34 @@ p
 We should also fine tune the guides: replace `pop` by `Population` and
 titlecase `continent`.
 
-:::
+
+```{r}
+# TODO: fine tune the guides: replace `pop` by `Population` and titlecase `continent`.
+
+```
 
 :::
 
-::: {.callout-note collapse="true"}
+:::
+
+::: {.callout-note}
+
+### Question
 
 What should be the respective purposes of Title, Subtitle, Caption, ... ?
 
 :::
 
+
 ## Theming using `ggthemes` (or not)
 
--   Theming
 
 ```{r}
-#| label: theme_economist
-require("ggthemes")
+stopifnot(
+  require("ggthemes")
+)
 ```
 
-::: {.callout-note collapse="true"}
-
-Look at the online help on `pacman::p_load()`, how does
-`pacman::p_load()` relate to `require()` and `library()`?
-:::
 
 A theme defines the *look and feel* of plots
 
@@ -687,7 +831,6 @@ theme](https://ggplot2.tidyverse.org/reference/theme_get.html) for a
 gallery of available themes
 
 ```{r}
-#| lightbox: true
 #| label: theme_economist-out
 p +
   theme_economist()
@@ -695,7 +838,23 @@ p +
 
 ## Tuning scales
 
-Use `scale_color_manual(...)` to hand-tune the color aesthetic mapping.
+
+::: {.callout-note}
+
+### Question
+
+Use `scale_color_manual(...)` to fine tune the color aesthetic mapping.
+
+
+:::
+
+
+::: {.content-visible when-profile='solution'} 
+
+::: {.callout-tip}
+
+### Solution
+
 
 ```{r}
 #| label: theme_scale
@@ -707,10 +866,6 @@ neat_color_scale <-
         "Europe" = "#fde803",
         "Oceania" = "#536227")
 ```
-
-::: {.content-visible when-profile="solution"} 
-
-::: {.callout-tip title="solution"}
 
 ```{r}
 #| label: manual_color_scaling
@@ -725,10 +880,14 @@ p
 
 :::
 
-::: {.callout-message collapse="true"}
+::: {.callout-tip collapse="false"}
+
+### Tip
+
 Choosing a color scale is a difficult task
 
 `viridis` is often a good pick.
+
 :::
 
 ::: {.content-visible when-profile="solution"} 
@@ -781,8 +940,9 @@ Use `facet_zoom()` from package `ggforce`
 
 ```{r}
 #| label: zoom_continent
-
-require("ggforce") #<<
+stopifnot(
+  require("ggforce") #<<
+)
 
 p_zoom_continent <- p + 
   facet_zoom( #<<
@@ -801,6 +961,17 @@ p_zoom_continent
 
 ## Adding labels
 
+::: {.callout-note}
+
+### Question
+
+Add labels to points. This can be done by aesthetic mapping.
+Use `aes(label=..)`
+
+To avoid text cluttering, package `ggrepel` offers interesting tools.
+
+:::
+
 ::: {.content-visible when-profile="solution"} 
 
 ::: {.callout-tip title="solution"}
@@ -810,8 +981,10 @@ p_zoom_continent
 #| label: plot_gap_minder_2002_labelled
 #| fig.cap:  Gapminder 2002 layer by layer
 
+stopifnot(
 require(ggrepel) #<<
- 
+)
+
 p +
    aes(label=country) + #<<
    ggrepel::geom_label_repel(max.overlaps = 5) + #<<
@@ -844,7 +1017,13 @@ but we can rely on *facetting*
 Facets are collections of small plots constructed in the same way on
 subsets of the data
 
-We add a layer to the graphical object using `facet_wrap()`
+::: {.callout-note}
+
+### Question
+
+Add a layer to the graphical object using `facet_wrap()`
+
+:::
 
 
 ::: {.content-visible when-profile="solution"} 
@@ -881,14 +1060,20 @@ to rebuild the graphical object along the same lines (using the same
 
 Should we do this using *cut and paste*?
 
-No
+{{< fa book-skull >}} No!!!
+
 :::
+
+::: {.callout-important}
 
 ### Don't Repeat Yoursel (DRY)
 
 > Abide to the DRY principle using operator `%+%`: the `ggplot2` object
 > `p` can be fed with another dataframe and all you need is proper
 > facetting.
+
+:::
+
 
 ::: {.content-visible when-profile="solution"} 
 
@@ -909,7 +1094,15 @@ p %+% gapminder
 
 ## Animate for free with `plotly`
 
-Use `plotly::ggplotly()`
+::: {.callout-note}
+
+### Question
+
+Use `plotly::ggplotly()` to create a Rosling like animation. 
+
+Use `frame` aesthetics.
+
+:::
 
 ::: {.content-visible when-profile="solution"} 
 
@@ -979,10 +1172,11 @@ q <- filter(gapminder, FALSE) |>
 
 ```{r}
 #| echo: false 
-#| eval: true
+#| eval: false
 knitr::include_url("https://www.youtube.com/embed?v=3_ZqrTsaO4k&list=PL4IzsxWztPdnCC_kMCYKrd_t6cViMhBrD&index=12")
 ```
 
+{{< video https://www.youtube.com/embed?v=3_ZqrTsaO4k&list=PL4IzsxWztPdnCC_kMCYKrd_t6cViMhBrD&index=12 >}}
 :::
 
 

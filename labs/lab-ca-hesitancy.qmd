@@ -1,5 +1,8 @@
 ---
 date: "`r Sys.time()`"
+title: "Correspondence Analysis of Survey Data"
+categories: [CA, Correspondence Analysis, SVD, Likert, Vaccine hesitancy, EpiCov] 
+
 
 execute:
   echo: true
@@ -95,6 +98,11 @@ knitr::opts_chunk$set(out.width="50%", fig.show='hold')
 
 
 
+::: {.callout-important}
+
+### Objectives
+
+:::
 
 
 

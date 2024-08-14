@@ -1,5 +1,7 @@
 ---
 date: "`r Sys.time()`"
+title: "Univeariate analysis: Historgrams and Density plots"
+categories: [Histograms, Density plots, Bandwidth selection]
 
 execute:
   echo: true
@@ -37,18 +39,21 @@ attach(params)
 #| include: true
 #| message: false
 #| warning: false
-require(patchwork)
-require(glue)
-require(here)
-require(tidyverse)
-require(ggmosaic)
-require(skimr)
-require(plotly)
-require(DT)
-require(GGally)
-require(ggforce)
-require(ggfortify)
-require(vcd)
+
+stopifnot(
+  require(patchwork),
+  require(glue),
+  require(here),
+  require(tidyverse),
+  require(ggmosaic),
+  require(skimr),
+  require(plotly),
+  require(DT),
+  require(GGally),
+  require(ggforce),
+  require(ggfortify),
+  require(vcd)
+)
 
 tidymodels::tidymodels_prefer(quiet = TRUE)
 
@@ -75,6 +80,11 @@ old_theme <-theme_set(theme_minimal(base_size=9, base_family = "Helvetica"))
 
 :::
 
+::: {.callout-important}
+
+### Objectives
+
+:::
 
 
 

@@ -1,5 +1,7 @@
 ---
 date: "`r Sys.time()`"
+title: "GSS R: installation and first exploration"
+categories: [GSS, Package Installatoin, ECDF, QQ plots ]
 
 execute:
   echo: true
@@ -75,6 +77,13 @@ old_theme <- theme_set(theme_minimal())
 ::: {#second-column}
 ![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
 :::
+
+:::
+
+
+::: {.callout-important}
+
+### Objectives
 
 :::
 

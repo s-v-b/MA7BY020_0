@@ -1,4 +1,6 @@
 ---
+title: "R programming: generic programming, tidy evaluation "
+categories: [R, S3 classes, Tidy evaluation]
 date: "`r Sys.time()`"
 
 execute:
@@ -56,14 +58,19 @@ engine: knitr
 #| message: false
 #| code-fold: true
 stopifnot(
-  require(Hmisc),
-  require(skimr),
-  require(patchwork),
-  require(ggforce),
-  require(glue),
-  require(ggfortify),
   require(broom),
-  require(tidyverse)
+  require(devtools),
+  require(ggforce),
+  require(ggfortify),
+  require(glue),
+  require(Hmisc),
+  require(lobstr),
+  require(patchwork),
+  require(rlang),
+  require(skimr),
+  require(testthat),
+  require(tidyverse),
+  require(usethis)
 )
 
 tidymodels::tidymodels_prefer(quiet = TRUE)
@@ -87,18 +94,13 @@ gc <- options(ggplot2.continuous.fill="viridis")
 gc <- options(ggplot2.continuous.colour="viridis")
 ```
 
-## Objectives
+::: {.callout-important}
+
+### Objectives
+
+:::
 
 
-```{r}
-stopifnot(
-  require(rlang),
-  require(lobstr),
-  require(devtools),
-  require(usethis),
-  require(testthat)
-)
-```
 
 
 
