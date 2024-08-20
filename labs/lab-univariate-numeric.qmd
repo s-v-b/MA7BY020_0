@@ -47,15 +47,25 @@ params:
 
 :::
 
-::: {.callout-important}
 
-### Objectives
 
-In Exploratory analysis of tabular data, univariate analysis is the first step. It consists in exploring, summarizing, visualizing columns of a dataset.
+::: {.callout-important title="Objectives"}
+
+In Exploratory Data Analysis of tabular data, univariate analysis is the first step. It consists in exploring, summarizing, visualizing columns of a dataset. In this workbook we focus on univariate numerical samples. We explore techniques for: 
+
+- Summarizing univariate numerical samples
+- Displaying numerical samples
+
+This is also an opportunity to:
+
+- Introduce to the [General Social Survey](https://gss.norc.org)
+- Use packages `gssr` and `gssrdoc`
 
 :::
 
 ## Setup
+
+If the required packages have not (yet) been installed, install them. 
 
 ```{r setup-packages}
 #| warning: false
@@ -63,61 +73,118 @@ In Exploratory analysis of tabular data, univariate analysis is the first step. 
 #| collapse: true
 
 stopifnot(
-  require(tidyverse), 
-                  require(magrittr),
-                  require(skimr),
-                  require(lobstr)
+  require(skimr),   # Univariate summaries from the shelf
+  require(lobstr),  # R introspection
+  require(rlang),   # R introspection
+  require(glue),    # Like formatted strings
+  require(gssr),
+  require(gssrdoc),
+  require(fs),      # File manipulation
+  require(patchwork), # piecing ggplots together
+  require(tidyverse) # What else?
 )
+```
 
+
+
+
+# General Social Survey (GSS) dataset
+
+
+
+::: {.callout-note}
+
+### Question
+
+Load the cumulative GSS dataset (`gss_all`). Have a glimpse at the resulting dataframe. Load `gss_dict`.
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip}
+
+### Solution
+
+```{r}
+#| eval: false
+ls()
+
+data(gss_all)   # Takes time
+
+ls()
+
+gss_all |> glimpse()
+```
+
+::: 
+
+:::
+
+::: {.callout-note}
+
+### Question
+
+- In dataset `gss_all`, what do the rows stand for? 
+- In dataset `gss_all`  what do columns `year`  and `id` stand for? 
+- For a given value of `id`, can you find several rows ?
+- For a given value of `year`, can you find several rows with the same `id`?
+- How many distinct values of `year` can you find in `gss_data`?
+- For each value of `year`, how many people were surveyed?
+- Why is this dataset called *cumulative*?
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip}
+
+### Solution
+
+In `gss_all`, rows stand for observation units: each row matches one respondent for a given year. 
+
+```{r}
+#| eval: false
+gss_all |> 
+#  select(year, id) |> 
+  count(year, by=id) |>
+  filter(n>1)
+```
+
+Distinct rows have distinct values in column `id`. Column `id` may server as an identifier/key for this table.  
+
+```{r}
+#| eval: false
+p <- gss_all |>
+  count(by=year) |>
+  ggplot() +
+    aes(x=by, y=n) +
+    geom_col() 
+
+
+p + labs(
+      title="Number of respondents for GSS"
+    ) +
+    xlab("Year")
 
 ```
 
 ```{r}
-cat(getwd())
+# gss_which_years(gss_all, fefam)
 ```
 
+::: 
 
-## Univariate numerical samples visualization
-
-For *numerical* samples/columns, to name a few:
-
-- Boxplots
-- Histograms
-- Density plots
-- CDF
-- Quantile functions
-- Miscellanea
-
-For categorical samples/columns, we have: 
-
-- Bar plots
-- Column plots
+:::
 
 
-# Dataset
+
+::: {.callout-note}
+
+### Question
 
 
-> Since 1948, the US Census Bureau  carries out a monthly Current Population Survey, 
-collecting data concerning residents aged above 15  from $150 000$ households. 
-This survey is one of the most important sources of information concerning the american workforce. Data reported in file `Recensement.txt`  originate from the 2012 census. 
-
-In this lab, we investigate the numerical colums of the dataset.
-
-
-After downloading, dataset `Recensement` can be found in file `Recensement.csv`.
-
-Choose a loading function  for the format. `Rstudio` IDE provides a valuable helper. 
-
-Load the data into the session environment and call it `df`.
-
-```{r}
-#| eval: true
-#| echo: true
-#| include: false
-list.dirs()
-list.files()
-getwd()
-```
+:::
 
 ::: {.content-visible when-profile="solution"}
 
@@ -127,10 +194,7 @@ getwd()
 #| mesage: false
 #| collapse: true
 
-df <- readr::read_table("../DATA/Recensement.csv")
 
-df %>% 
-  glimpse()
 ```
 
 :::::
@@ -139,499 +203,422 @@ df %>%
 
 # Table wrangling
 
-Which columns should be considered as categorical/factor?
+Load `gss_sub` which is much smaller than `gss_all`. Have a glimpse. 
+
+::: {.callout-note title="Question"}
+
+- How many variables can you find in `gss_sub`?
+- How many distinc values for each column? 
+- Which columns should be considered as categorical/factor?
+ 
+:::
 
 ::: {.content-visible when-profile="solution" collapse="true"}
+
+::: {.callout-tip title="Solution"}
 
 Deciding which variables are categorical sometimes requires judgement. 
 
-Let us attempt to base the decision on a checkable criterion: determine  the number of distinct values in each column, consider those columns with less than 20 distinct values as factors. 
-
-:::
-
-::: {.content-visible when-profile="solution"}
-
-::::: {.callout-note title="solution" collapse="true"}
-
 ```{r}
-to_be_categorized  <- df %>% 
-  summarise(across(everything(), n_distinct)) %>% 
-  pivot_longer(cols = everything(), 
-               # names_to = "nom_colonne",
-               values_to = c("n_levels")) %>% 
-  filter(n_levels < 20) %>% 
-  arrange(n_levels) 
-
-to_be_categorized
-
-to_be_categorized %>% 
-  pull(name)
+data(gss_sub)
 ```
 
-Columns `NB_PERS` and `NB_ENF` have few unique values and nevertheless we could consider them as quantitative. 
-
-:::::
-
-:::
-
-Coerce the relevant columns as factors. 
-
-
-
-::: {.content-visible when-profile="solution"}
-
-::::: {.callout-note title="solution" collapse="true"}
-
-We could proceed by iteration over the relevant columns. We 
-use `lobstr::...` to monitor the copy on modify process. 
-
 ```{r}
-lobstr::obj_addr(df)
-lobstr::ref(df)
-
-df_copy <- df 
-
-lobstr::ref(df_copy)
-
-for (cl in pull(to_be_categorized,name)) {
-  df_copy[[cl]] <- as_factor(df_copy[[cl]])
-}
-
-lobstr::obj_addr(df_copy)
-foo <- lobstr::ref(df_copy)
-```
-
-We will kill several birds with one stone.
-
-`across()` allows us to  pick  the columns to be categorized, to 
-apply `as_factor()` to each of them, and to replace the old column 
-by the result of `as_factor(....)`  
-
-```{r}
-#| collapse: true
-#| 
-df_cp <- df %>% 
-  mutate(across(all_of(pull(to_be_categorized, name)), as_factor))
-
-lobstr::ref(df_cp)
-
-df %>% 
-  glimpse()  
-```
-
-We could do this using the WET approach 
-
-```{r}
-#| eval: false
-df_wet <- df %>% 
-  mutate(SEXE = as_factor(SEXE), 
-         SYNDICAT = as_factor(SYNDICAT), 
-         REGION = as_factor(REGION), 
-         STAT_MARI = as_factor(STAT_MARI), 
-         NB_ENF = as_factor(NB_ENF), 
-         NB_PERS = as_factor(NB_PERS), 
-         CATEGORIE = as_factor(CATEGORIE),
-         NIV_ETUDES = as_factor(NIV_ETUDES), 
-         REV_FOYER = as_factor(REV_FOYER)
-  ) 
-
-df_wet %>% 
+gss_sub |>
   glimpse()
+
+gss_sub |>
+  select(-id, -year) |>
+  summarize(across(everything(), n_distinct)) |>
+  pivot_longer(cols=everything(), values_to="n") |>
+  arrange(desc(n))
+```
+
+Columns  `wtssps`, `vpsu`, `vstrat`, `sampcode`, `wtssall`,  `formwt`, and `sample` seem to serve some methodological purpose. Just as `id` or `year`, they do not convey information about a responden demography or attitude but contain information  about the data gathering process. According to [gssr package overview](https://kjhealy.github.io/gssr/articles/overview.html), these variables are necessary for the survey weighting.  
+
+```{r}
+wt_vars <- c("vpsu",
+             "vstrat",
+             "oversamp",
+             "formwt",              # weight to deal with experimental randomization
+             "wtssps",              # weight variable
+             "sampcode",            # sampling error code
+             "sample")              # sampling frame and method
 ```
 
 
-{{< fa hand-point-right >}} Compare `pull`  and `pluck`
+```{r}
+n_per_col <- gss_sub |>
+  select(-id, -year, -all_of(wt_vars)) |>
+  summarize(across(everything(), n_distinct)) |>
+  pivot_longer(cols=everything(), values_to="n") |>
+  arrange(desc(n))
 
-:::::
+n_per_col 
+```
+
+{{< fa hand-point-right >}} `age` may be considered as a numerical column, whereas colums 
+`relig`, `polviews`, `degree`, `padeg`, `madeg`, `ballot`, `fefam`,`race`, `sex` can be viewed as categorical.
 
 :::
 
+:::
 
-# Search for missing data  (optional)
+::: {.callout-note title="Question"}
 
-Check whether some columns contain missing data (use `is.na`).
+For column `age`, disregarding any weighting process
+
+- compute the summary. 
+- compute the range, the IQR, the standard deviation
+- compute the Mean Absolute Deviation, the Median Absolute Deviation
+
+
+:::
+
+::: {.content-visible when-profile="solution"}
+
+::::: {.callout-note title="solution" collapse="true"}
+
+```{r}
+col <- gss_sub |>
+  pull(age) 
+  
+col |>
+  summary()
+```
+
+```{r}
+fns <- c(
+  med=\(x) median(x, na.rm=T), 
+  iqr=\(x) IQR(x,  na.rm=T),
+  mad=\(x) mean( abs(x-median(x, na.rm=T)), na.rm=T),
+  mad2=\(x) median( abs(x-median(x, na.rm=T)), na.rm=T),
+  sd=\(x) sd(x, na.rm=T)
+)
+
+gss_sub |>
+  summarize(across(age, fns))
+```
+
+
+```{r}
+gss_sub |>
+  skimr::skim(age)
+```
+:::::
+
+:::
 
 ::: {.callout-tip}
 
-Useful functions:
+Filter out rows with missing data in columns `age` or `sex`
 
-- `dplyr::summarise_all`
-- `tidyr::pivot_longer`
-- `dplyr::arrange`
-
+```{r}
+gss_fil <- gss_sub |>
+  filter(!is.na(age), !is.na(sex))
+```
 :::
 
-::: {.content-visible when-profile="solution"}
 
-::::: {.callout-note title="solution" collapse="true"}
+::: {.callout-note title="Question"}
 
-```{r}
-df %>% 
-  is.na() %>% 
-  as_tibble %>% 
-  summarise(across(everything(), sum))  %>%
-  knitr::kable()
-```
-
-or 
-
-```{r}
-df %>% 
-  summarise(across(everything(), \(x) sum(is.na(x)))) 
-```
-
-or 
-
-```{r}
-df %>% 
-  summarise(across(everything(), ~ sum(is.na(.)))) 
-```
-
-Note the different ways of introduction anonymous functions.
-
-:::::
+- Build a boxplot for `age`.
+- Equip the plot with a title, a subtitle, a caption
+- Annotate the boxplot with summary statistics.
 
 :::
 
 
-# Analysis of column `AGE`
-
-## Numerical summary 
-
-
-
-::: {.content-visible when-profile="solution"}
-
-::::: {.callout-note title="solution" collapse="false"}
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip title="Solution"}
 
 ```{r}
-df %>% 
-    pull(AGE) %>% 
-    summary()
+p_box <- gss_fil |>
+  ggplot() +
+  aes(y=age) +
+  geom_boxplot()
 
-sd(df$AGE) ; IQR(df$AGE) ; mad(df$AGE)
-```
-
-:::::
-
-:::
-
-Use `skimr::skim()` 
-
-
-::: {.content-visible when-profile="solution"}
-
-::::: {.callout-note title="solution" collapse="true"}
-
-```{r}
-df %>% 
-    pluck("AGE") %>% 
-    skimr::skim()
-```
-
-```{r}
-skm <- df %>% 
-  skimr::skim(AGE)
-
-class(skm)
-
-attributes(skm)
-
-tibble::as_tibble(skm)
-```
-
-
-:::::
-
-:::
-
-
-Compare `mean` and `median`, `sd`  and `IQR`. 
-
-Are mean and median systematically related?
-
-::: {.content-visible when-profile="solution" collapse="true"}
-
-::::: {.callout-note title="solution" collapse="true"}
-
-Ask chatgpt.
-
-There is at least one relation between median and mean for square-integrable distributoins:
-$$|\text{Median} - \text{Mean}| \leq \text{sd}$$
-Lévy's inequality.
-
-:::::
-
-:::
-
-Are standard deviation and IQR systematically related ?
-
-::: {.content-visible when-profile="solution" collapse="true"}
-
-::::: {.callout-note title="solution" collapse="true"}
-
-Ask chatgpt.
-
-Yes. 
-
-:::::
-
-:::
-
-## Boxplots
-
-Draw a boxplot of the Age distribution 
-
-::: {.content-visible when-profile="solution"}
-
-::::: {.callout-note title="solution" collapse="true"}
-
-```{r}
-df %>% 
-    ggplot() +
-    aes(x=1L, y=AGE) +
-    geom_boxplot() +
-    labs(
-        title="Age distribution",
-        subtitle = "Census data"
+p_box +
+  labs(
+    title="Boxplot of age distribution",
+    subtitle="gss cumulative data",
+    caption=glue(
+      "Sample size {length(gss_sub)}, {sum(is.na(col))} NAs"
     )
+  )
 ```
 
-:::::
+::: 
+ 
+:::
+
+::: {.callout-note title="Question"}
+
+- Build a boxplot of `age` distribution according to `sex`.
+- What is the impact of argument `varwidth=T`?
+- What is the impact of argument `notch=T`? 
+- What is the difference between `stat_boxplot()` and `geom_boxplot()`?
+- How would you get rid of the useless ticks on the x-axis? 
 
 :::
 
-How would you get rid of the useless ticks on the x-axis? 
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip title="Solution"}
 
-::: {.content-visible when-profile="solution" collapse="true"}
-
-::::: {.callout-note title="solution" collapse="true"}
-
-Ask chatgpt.
-
-Yes. 
-
-:::::
-
-:::
-
-## Histograms
-
-Plot a _histogram_ of the empirical distribution of the `AGE` column
-
-::: {.content-visible when-profile="solution"}
-
-::::: {.callout-note title="solution" collapse="true"}
 
 ```{r}
-p <- df %>% 
+gss_fil |>
   ggplot() +
-  aes(x=AGE) +
+  aes(x=as_factor(sex), y=age) +
+  geom_boxplot(varwidth=T, notch=T) +
   labs(
-    title = "Age distribution",
-    subtitle = "Census data",
-    x = "Age (Years)",
-    y = "Density"
-  ) +
-  theme_minimal()
-
-  
-p +
-  geom_histogram(aes(y=after_stat(density)),
-                 bins=15,
-                 fill="white",
-                 color="black") +
-  labs(
-    caption = "Histogram"
+    title="Boxplot of age distribution with respect to sex",
+    subtitle="gss cumulative data",
+    caption=glue(
+      "Sample size {nrow(.data)}, NAs removed"
+    )
   )
-
 ```
 
+::: 
+:::
 
 
+::: {.callout-note title="Question"}
 
-:::::
+- Plot a histogram of the `age` distribution
+- Facet by `sex`
+- Draw the `age` distribution histograms for each sex on the same plot
+- Facet by `sex` and `year`
+- Build an animated histogram plot where `frame` is determined by `year` 
 
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip title="Solution"}
+
+```{r}
+n_bins <- 10
+
+p_h <- gss_fil |>
+  ggplot() +
+  aes(x=age)
+
+p_10 <- p_h +
+  geom_histogram(
+    bins= n_bins,
+    fill="white",
+    color="black"
+  ) 
+
+n_bins <- 20
+
+p_20 <- p_h + 
+   geom_histogram(
+    bins= n_bins,
+    fill="white",
+    color="black"
+  )  
+
+p_10 + p_20
+```
+
+::: 
+ 
 :::
 
 
 
-Try different values for the `bins` parameter of `geom_histogram()`
 
-## Density estimates
+Histograms are used to sketch possibly (absolutely) continuous distributions
+by using piecewise constant approximations of density functions. Histograms 
+can also be viewed as column plots for binned data (that is discretizations
+of "continuous" data).  
 
-Plot a _density_ estimate of the `AGE` column (use `stat_density`.
 
-::: {.content-visible when-profile="solution"}
+::: {.callout-note title="Question"}
 
-::::: {.callout-note title="solution" collapse="true"}
+- Define *breaks* for `age` data 
+  - regular breaks with age ranges of length 5
+  - irregular breaks `[18-25[`, `[25, 35[`, `[35,50[`, `[50, 65[`, `[65,+∞[`
+- Bin `age` according to defined breaks using `cut()`
+- Plot the binned data using `geom_bar()` or `geom_col()` 
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip title="Solution"}
 
 ```{r}
-p +
-  stat_density(
-              fill="white",
-              color="black") +
-  labs(
-    caption = "Kernel Density Estimate"
-  )
+
 ```
 
-:::::
 
 :::
 
 
-Play with parameters `bw`, `kernel` and `adjust`.
+:::
 
-## Overlay the two plots  (histogram and density).
 
-::: {.content-visible when-profile="solution"}
+Demographers use *population pyramids* to sketch the age distribution in a population. 
+Population pyramids are special facetted histograms or barplots. 
 
-::::: {.callout-note title="solution" collapse="true"}
+::: {.callout-note title="Question"}
+
+- Plot an age-sex pyramid for the `gss` sample. 
+- Animate with respect to `year`
+
+:::
+
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip title="Solution"}
+
+:::
+ 
+:::
+
+
+Histograms deliver piecewise constant estimations/approximations of a population density. 
+If we suspect the population density to be *smooth*, it is sensible to try to build 
+smooth estimates/aproximations of the population density. This is the purpose of density estimates. 
+
+
+::: {.callout-note  title="Question"}
+
+- Draw density plots for age distribution
+- Use different bandwidths
+- Use different kernels
+- Facet by `sex`
+- Facet by `sex` and `year`
+- Overlay histograms and density plots (in `geom_histogram()` use `aes(y=after_stat(density))`)
+
+:::
+
+::: {.callout-tip}
+
+Use `stat_density()`
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip title="Solution"}
+
 
 ```{r}
-p +
+p_h +
   stat_density(
               fill="white",
               color="black") +
-  geom_histogram(aes(y=after_stat(density)),
-                 bins=15,
-                 fill="white",
-                 color="black",
-                 alpha=.5) +
+  geom_histogram(
+    aes(y=after_stat(density)
+    ),
+     bins=15,
+     fill="white",
+     color="black",
+     alpha=.5) +
   labs(
     caption = "Overlayed Density Estimates"
   )
 ```
+::: 
+ 
+:::
 
-:::::
+
+::: {.callout-note title="Question"}
+
+Build violine plots for `age` distribution (use `geom_violine()`).
 
 :::
 
 
-## ECDF 
-
-Plot the Empirical CDF of the AGE distribution 
-
-::: {.content-visible when-profile="solution"}
-
-::::: {.callout-note title="solution" collapse="true"}
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip tip="Solution"}
 
 ```{r}
-p +
-    stat_ecdf()  +
-    labs(
-        caption = "Empirical CDF"
-  )
-```
-
-:::::
-
-:::
-
-
-Can you read the quartiles from the ECDF pplot?
-
-::: {.content-visible when-profile="solution" collapse="true"}
-
-::::: {.callout-note title="solution" collapse="true"}
-
-Of course. Yes, we can.
-
-:::::
-
-:::
-
-## Quantile function 
-
-
-PLot the quantile function of the AGE distribution. 
-
-
-# Repeat the analysis for `SAL_HOR`
-
-::: {.content-visible when-profile="solution"}
-
-::::: {.callout-note title="solution" collapse="true"}
-
-```{r}
-p <- df %>% 
+gss_fil |>
+  filter (as.integer(year) %% 8L ==0L) |>
   ggplot() +
-  aes(x=SAL_HOR) +
-  labs(
-    title = "Wage distribution",
-    subtitle = "Census data",
-    x = "Hourly wage",
-    y = "Density"
-  ) +
-  theme_minimal()
-
-  
-p +
-  geom_histogram(aes(y=after_stat(density)),
-                 bins=15,
-                 fill="white",
-                 color="black") +
-  labs(
-    caption = "Histogram"
-  )
+  aes(x=as_factor(year),y=age) +
+  geom_violin() +
+  facet_wrap(~ sex)
 ```
 
-:::::
+::: 
+
+:::
+
+Not all probability distributions have densities, but all are characterized by their Cumulative Distribution Functions (CDFs). Each sample defines an Empirical Cumulative Distribution Function (ECDF). 
+
+::: {.callout-note title="Question"}
+
+- Plot the `age` ECDF using `stat_ecdf()`
+- Facet by `sex`, then by `year` and `sex`
+- Use base `R` `ecdf()` and `stat_function()` to draw the same plot.
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip title="Solution"}
+
+:::
+ 
+:::
+
+::: {.callout-note}
+
+### Question {{< fa mug-hot >}}
+
+- Compare the `age` distributions for women and men using the Kolmogorov-Smirnov statistic (`ks.test()`)
+- How is the Kolmogorov-Smirnov statistic computed?
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip title="Solution"}
+
+:::
+ 
+:::
+
+The *quantile function* of a probability distribution is the (generalized, left-continuous) inverse of its CDF. Quantile functions are useful devices in EDA and random generation.
+
+::: {.callout-note title="Question"}
+
+- Plot the quantile function of the `age` empirical distribution
+- Plot the quantile functions of the `age` empirical distributions for men and women
+- Design  a function that takes as input a univariate numerical sample and returns the quantile function (in the same way as `ecdf()` does)
 
 :::
 
 
-::: {.content-visible when-profile="solution"}
+::: {.content-visible when-profile='solution'} 
 
-::::: {.callout-note title="solution" collapse="true"}
+::: {.callout-tip title="Solution"}
 
-```{r}
-p +
-  stat_density(
-              fill="white",
-              color="black") +
-  geom_histogram(aes(y=after_stat(density)),
-                 bins=15,
-                 fill="white",
-                 color="black",
-                 alpha=.5) +
-  labs(
-    caption = "Overlayed Density Estimates"
-  )
-```
+:::
+ 
+:::
 
-```{r}
-truc <- rlang::expr({fill=alpha("white",.5)})
-p <- df %>% 
-  ggplot() +
-  aes(x=SAL_HOR, y=after_stat(density)) +
-  labs(
-    title = "Wage distribution",
-    subtitle = "Census data",
-    x = "Hourly wage",
-    y = "Density"
-  ) +
-  theme_minimal()
-```
+::: {.callout-note title="Question"}
 
-```{r}
-p + 
-  stat_density(fill=alpha("grey", 0.5), color="black") +
-  geom_histogram(fill=alpha("grey", 0.5), color="black", bins=15) +
-  labs(
-    caption = "Overlayed Density Estimates"
-  )
-```
-
-
-
-:::::
+- Draw a quantile-quantile plot to compare `age` distribution for women and men with base `R` `qqplot()`
+- {{< fa mug-hot >}} Draw a quantile-quantile plot to compare `age` distribution for women and men using `ggplot2`.
 
 :::
 
 
-How could you comply with the DRY principle ?
+# How could you comply with the DRY principle ?
 
 ::: {.content-visible when-profile="solution" collapse="true"}
 
@@ -656,7 +643,7 @@ An attempt:
 
 
 ```{r}
-mp <- df_cp |> 
+mp <- gss_fil |> 
   make_biotifoul(is.numeric) + 
   theme_minimal()
 
@@ -673,11 +660,11 @@ Another attempt
 
 
 ```{r}
-list_plots <- df_cp |> 
+list_plots <- gss_fil |> 
   select(where(is.numeric)) |> 
   colnames() |> 
   map(rlang::parse_expr) |>
-  map (\(x) my_histo(df, {{x}}))
+  map (\(x) my_histo(gss_fil, {{x}}))
 
 patchwork::wrap_plots(list_plots)
 ```
@@ -685,12 +672,69 @@ patchwork::wrap_plots(list_plots)
 
 :::
 
+# Lazy loading  and labelled format
 
-# Useful links
+::: {.callout-note}
+
+### Question 
+
+- What is `R` *lazy loading*? 
+- What is the *labelled format* used the GSS data?
+
+:::
+
+::: {.content-visible when-profile='solution'} 
+ 
+::: {.callout-tip title="Solution"}
+
+To understand the *labelled format*, recall that the tibble columns are vectors. Vectors may be endowed with attributes (just like factors are integer vectors with a `levels` atribute). We may examine attributes of a given column, using `attributes()`. Consider for example column `fefam`.
+
+```{r}
+col_fefam <- gss_sub |>
+  pull(fefam) 
+  
+col_fefam |>
+  attributes()
+```
+
+Attribute `label` point to the question. Do ou agree with the foloowing statement *better for man to work, woman tend home*?
+
+Attribute `class` tell us that the vector basetype is numeric (`double`), that the vector use methods for S3 generic functions for class `vctrs_vctr` (see vctrs` package), and S3  generic functions for class `haven_labelled`.
+
+Attribute `labels` contain levels encoded by the numeric values.
+The first 5 labels represent a Likert scale ranging from `strongly agree` to `strongly disagree`, with a `don't know` response. Other labels 
+
+```{r}
+col_fefam[!is.na(as.numeric(col_fefam))][1:10] |>
+  as.numeric() 
+```
+
+Have a look at the 12 labels that denote missing data.
+
+```{r}
+attr(col_fefam, "labels") |> 
+  names()
+```
+
+- What does `not imputatble` mean?
+- Is there a difference between `don't know` and `no answer`?
+- What happens if you coerce column `fefam` using `as_factor`?
+
+
+::: 
+
+
+:::
+
+
+# References 
 
 - [rmarkdown](bookdown.org/yihui/rmarkdown)
 - [dplyr](https://gplot2.tidyverse.org)
 - [ggplot2](https://ggplot2.tidyverse.org)
 - *R Graphic Cookbook*. Winston Chang. O' Reilly.
 - [A blog on ggplot object](https://www.data-imaginist.com/2017/Beneath-the-canvas/)
-- [`skimr`]()
+- [Package `skimr`](https://github.com/ropensci/skimr)
+- [Package `gssr`]()
+- [Package `gssrdoc`]()
+- [General Social Survey](https://gss.norc.org)
