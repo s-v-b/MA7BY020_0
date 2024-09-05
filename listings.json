@@ -1,0 +1,67 @@
+[
+  {
+    "listing": "/projects-listings.html",
+    "items": [
+      "/projects/hmw-dev-2024.html",
+      "/projects/hmw-glm-2024.html",
+      "/projects/hmw-miashs-23-24-a.html",
+      "/projects/hmw-miashs-23-24-b.html",
+      "/projects/homework01-2023.html",
+      "/projects/homework01.html",
+      "/projects/hmw_gapminder_oecd.html",
+      "/projects/fake-report.html",
+      "/projects/hmw_template.html",
+      "/projects/homework02.html"
+    ]
+  },
+  {
+    "listing": "/slides-listings.html",
+    "items": []
+  },
+  {
+    "listing": "/labs-solutions-listings.html",
+    "items": []
+  },
+  {
+    "listing": "/labs-listings.html",
+    "items": [
+      "/labs/lab-babynames.html",
+      "/labs/lab-corr-babynames.html",
+      "/labs/lab-bivariate.html",
+      "/labs/lab-slr.html",
+      "/labs/lab-hclust.html",
+      "/labs/lab-kmeans.html",
+      "/labs/lab-ca-mortality.html",
+      "/labs/lab-ca-hesitancy.html",
+      "/labs/lab-gapminder.html",
+      "/labs/lab-oecd-vis.html",
+      "/labs/lab-gapminder-plotly.html",
+      "/labs/lab-gss-r.html",
+      "/labs/lab-gss.html",
+      "/labs/lab-life-tables.html",
+      "/labs/lab-lifeexp-1948-2016.html",
+      "/labs/lab-lifeexp.html",
+      "/labs/lab-lt.html",
+      "/labs/lab-lee-carter.html",
+      "/labs/lab-exercises-glm.html",
+      "/labs/lab-lin-reg.html",
+      "/labs/lab-lin-reg-2.html",
+      "/labs/lab-whiteside.html",
+      "/labs/lab-whiteside-anova.html",
+      "/labs/lab-pca-misc.html",
+      "/labs/lab-pca.html",
+      "/labs/lab-r-intro.html",
+      "/labs/lab-progr.html",
+      "/labs/lab-vectorization.html",
+      "/labs/lab-vctrs.html",
+      "/labs/lab-dplyr-SQL.html",
+      "/labs/lab-tables.html",
+      "/labs/lab-test-miashs.html",
+      "/labs/lab-test-miashs-2.html",
+      "/labs/lab-univariate-numeric.html",
+      "/labs/lab-univariate-categorical.html",
+      "/labs/lab-histo-density.html",
+      "/labs/lab-report-census.html"
+    ]
+  }
+]
