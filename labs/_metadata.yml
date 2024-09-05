@@ -11,6 +11,8 @@ format:
     keep-tex: false
     documentclass: exam
     classoption: [11pt,titlepage=false]
+    include-in-header: 
+      - file: macros.tex
     include-before-body: 
       - text: "\\renewcommand{\\contentsname}{}"
 

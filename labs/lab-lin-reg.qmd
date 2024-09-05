@@ -22,9 +22,9 @@ params:
   year: 2024 
   curriculum: "M1 MIDS/MFA"
   university: "Université Paris Cité"
-  homepage: "https://stephane-v-boucheron.fr/courses/eda"
-  moodle: "https://moodle.u-paris.fr/course/view.php?id=13227"
-  datapath: "../DATA/"
+  homepage: "https://s-v-b.github.io/MA7BY020"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=6143"
+  datapath: "/DATA"
   
 engine: knitr
 ---
@@ -76,11 +76,11 @@ stopifnot(
   require(lobstr),
   require(magrittr),
   require(patchwork),
-  require(pryr)
   require(rlang),
   require(skimr),
+  require(fs),
   require(tidyverse),
-  require(viridis),
+  require(viridis)
 )
 
 old_theme <- theme_set(theme_minimal())
@@ -107,9 +107,16 @@ Dataset `Banque.csv` contains information on clerical officers in the Banking se
 - [ ] Have a glimpse at it
 - [ ] Check the typing of columns
 
+```{r}
+if (fs::dir_exists('DATA')){
+  datapath <- '/DATA'
+} else {
+  datapath <- '../DATA'
+}
+```
 
 ```{r load_data}
-fpath <- str_c(params$datapath, "Banque.csv", sep="/")  # tune this
+fpath <- str_c(datapath, "Banque.csv", sep="/")  # tune this
 
 bank <- readr::read_delim(fpath, delim = "\t", 
     escape_double = FALSE, 

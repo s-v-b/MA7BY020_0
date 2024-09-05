@@ -21,8 +21,8 @@ params:
   year: 2024 
   curriculum: "M1 MIDS & MFA"
   university: "Université Paris Cité"
-  homepage: "https://stephane-v-boucheron.fr/courses/eda"
-  moodle: ""
+  homepage: "https://s-v-b.github.io/MA7BY020"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=6143"
 ---
 
 
@@ -201,7 +201,7 @@ p + labs(
 
 :::
 
-# Table wrangling
+# Table exploration
 
 Load `gss_sub` which is much smaller than `gss_all`. Have a glimpse. 
 
@@ -237,9 +237,9 @@ gss_sub |>
 Columns  `wtssps`, `vpsu`, `vstrat`, `sampcode`, `wtssall`,  `formwt`, and `sample` seem to serve some methodological purpose. Just as `id` or `year`, they do not convey information about a responden demography or attitude but contain information  about the data gathering process. According to [gssr package overview](https://kjhealy.github.io/gssr/articles/overview.html), these variables are necessary for the survey weighting.  
 
 ```{r}
-wt_vars <- c("vpsu",
-             "vstrat",
-             "oversamp",
+wt_vars <- c("vpsu",      #  variance primary sampling unit
+             "vstrat",    #  variance strata
+             "oversamp",  # 
              "formwt",              # weight to deal with experimental randomization
              "wtssps",              # weight variable
              "sampcode",            # sampling error code
@@ -263,6 +263,19 @@ n_per_col
 :::
 
 :::
+
+::: {.callout-warning title="Caveat"}
+
+In the sequel, we explore the `age` distribution as is the `age` column was a genuine univariate sample. This is done for teaching purpose. The `age` column is not collected by repeatedy picking individuals uniformly at random from a fixed population. 
+
+Indeed the `age` column is a union of samples collected every year or every two years since 1972. The American population has changed thoughout the five decades.
+
+Moreover,  yearly samples are not i.i.d. samples from the whole population. The sampling methods have varied over time. Sampling methods rely on multistage stratified sampling and quotas. 
+
+:::
+
+# Exploring `age` column 
+
 
 ::: {.callout-note title="Question"}
 
@@ -318,6 +331,8 @@ gss_fil <- gss_sub |>
   filter(!is.na(age), !is.na(sex))
 ```
 :::
+
+## Boxplots
 
 
 ::: {.callout-note title="Question"}
@@ -384,6 +399,8 @@ gss_fil |>
 
 ::: 
 :::
+
+## Histograms
 
 
 ::: {.callout-note title="Question"}
@@ -479,9 +496,15 @@ Population pyramids are special facetted histograms or barplots.
  
 ::: {.callout-tip title="Solution"}
 
+- [r-bloggers](https://www.r-bloggers.com/2023/09/creating-population-pyramid-plots-in-r-with-ggplot2/)
+- [Stackoverflow](https://stackoverflow.com/questions/14680075/simpler-population-pyramid-in-ggplot2)
+- [R for the rest of us](https://rfortherestofus.com/2024/07/population-pyramid-part-2)
+
 :::
  
 :::
+
+## Density plots
 
 
 Histograms deliver piecewise constant estimations/approximations of a population density. 
@@ -556,6 +579,8 @@ gss_fil |>
 
 :::
 
+## Cumulative Distribution Functions
+
 Not all probability distributions have densities, but all are characterized by their Cumulative Distribution Functions (CDFs). Each sample defines an Empirical Cumulative Distribution Function (ECDF). 
 
 ::: {.callout-note title="Question"}
@@ -590,6 +615,8 @@ Not all probability distributions have densities, but all are characterized by t
 :::
  
 :::
+
+## Quantile plots
 
 The *quantile function* of a probability distribution is the (generalized, left-continuous) inverse of its CDF. Quantile functions are useful devices in EDA and random generation.
 
@@ -738,3 +765,4 @@ attr(col_fefam, "labels") |>
 - [Package `gssr`]()
 - [Package `gssrdoc`]()
 - [General Social Survey](https://gss.norc.org)
+- [Data gathering and processing from Statistics Canada](https://www150.statcan.gc.ca/n1/edu/power-pouvoir/ch15/5200003-eng.htm)

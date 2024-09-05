@@ -19,7 +19,7 @@ params:
   curriculum: "M1 MIDS/MFA"
   university: "Université Paris Cité"
   homepage: "https://stephane-v-boucheron.fr/courses/scidon"
-  moodle: "https://moodle.u-paris.fr/course/view.php?id=13227"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=6143"
   
 engine: knitr
 ---
@@ -65,18 +65,18 @@ We will use the following packages. If needed, we install them.
 #| warning: false
 #| include: false
 stopifnot(
-  require(tidyverse), 
-                  require(lobstr),
-                  require(ggforce),
-                  require(nycflights13),
-                  require(patchwork), 
-                  require(glue),
-                  require(DT), 
-                  require(viridis),
-                  require(sqldf), 
-                  require(dbplyr),
-                  require(dtplyr)
-                  )
+  require(lobstr),
+  require(ggforce),
+  require(nycflights13),
+  require(patchwork), 
+  require(glue),
+  require(DT), 
+  require(viridis),
+  require(sqldf), 
+  require(dbplyr),
+  require(dtplyr),
+  require(tidyverse)
+)
 
 
 ```
@@ -600,7 +600,7 @@ flights %>%
 ::: {.callout-note title="Solution"}
 
 ```{r}
-
+#| echo: false
 ```
 
 :::

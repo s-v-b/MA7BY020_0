@@ -7,6 +7,8 @@ format:
   html:
     output-file: lab-gapminder.html
   pdf:
+    include-in-header: 
+      - file: macros.tex
     output-file: lab-gapminder.pdf
 
 execute: 
@@ -20,8 +22,8 @@ params:
   year: 2024 
   curriculum: "M1 MIDS & MFA"
   university: "Université Paris Cité"
-  homepage: "https://stephane-v-boucheron.fr/courses/isidata"
-  moodle: ""
+  homepage: "https://s-v-b.github.io/MA7BY020"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=6143"
 ---
 
 
@@ -394,7 +396,11 @@ gapminder |>
 
 ::: {.callout-caution}
 
+::: {.content-hidden unless-format="html"}
+
 ### {{< fa triangle-exclamation >}}
+
+:::
 
 Equality testing is performed using `==`, not `=` (which is used to implement assignment)
 
@@ -608,7 +614,7 @@ Geometries and Statistics describe the building blocks of graphics
 
 when comparing to the Gapminder demonstration, we can spot that
 
--   colors are missing {{< fa face-frown >}}
+-   colors are missing 
 -   bubble sizes are all the same. They should reflect the population
     size of the country
 -   titles and legends are missing. This means the graphic object is
@@ -1060,7 +1066,7 @@ to rebuild the graphical object along the same lines (using the same
 
 Should we do this using *cut and paste*?
 
-{{< fa book-skull >}} No!!!
+{{< fa skull-crossbones >}} No!!!
 
 :::
 

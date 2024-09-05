@@ -1,6 +1,6 @@
 ---
 title: 'Univariate analysis II'
-categories: [Univariate analysis, Categorical data, Factors, Column plots, Bar plots]
+categories: [Univariate analysis, Categorical data, Factors, Column plots, Bar plots, GSS]
 date: "`r Sys.time()`"
 
 
@@ -21,8 +21,8 @@ params:
   year: 2024 
   curriculum: "M1 MIDS & MFA"
   university: "Université Paris Cité"
-  homepage: "https://stephane-v-boucheron.fr/courses/eda"
-  moodle: ""
+  homepage: "https://s-v-b.github.io/MA7BY020"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=6143"
 ---
 
 ::: {layout="[80,20]"}
@@ -70,16 +70,20 @@ Try to load (potentially) useful packages in a chunk at the beginning of your fi
 #| collapse: true
 
 stopifnot(
-  require(tidyverse), 
   require(lobstr), 
+  require(rlang),
   require(ggforce),
   require(patchwork), 
   require(glue),
   require(magrittr),
   require(DT), 
-  require(lobstr),
+  require(gt),
   require(kableExtra),
-  require(viridis)
+  require(viridis),
+  require(vcd),
+  require(skimr),
+  require(tidyverse)
+
 )
 ```
 

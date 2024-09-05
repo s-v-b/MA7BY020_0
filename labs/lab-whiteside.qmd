@@ -20,8 +20,8 @@ params:
   year: 2024 
   curriculum: "M1 MIDS & MFA"
   university: "Université Paris Cité"
-  homepage: "https://stephane-v-boucheron.fr/courses/eda"
-  moodle: ""
+  homepage: "https://s-v-b.github.io/MA7BY020"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=6143"
   
 engine: knitr
 ---
@@ -887,7 +887,10 @@ Understanding column `.sigma`
 
 Column `.sigma` contains the *leave-one-out* estimates of $\sigma$, that is `whiteside_aug1$.sigma[i]` is the estimate of $\sigma$ you obtain by leaving out the `i` row of the dataframe. 
 
-{{< fa wand-magic-sparkles >}} There is no need to recompute everything for each sample element.
+::: {.content-hidden unless-format="html"}
+{{< fa wand-magic-sparkles >}} 
+::: 
+There is no need to recompute everything for each sample element.
 
 $$
 \widehat{\sigma}^2_{(i)} =  \widehat{\sigma}^2 \frac{n-p-1- \frac{\widehat{\epsilon}_i^2}{\widehat{\sigma}^2 {(1 - H_{i,i})}}\frac{}{}}{n-p-2}

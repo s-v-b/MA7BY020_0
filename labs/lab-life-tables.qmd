@@ -19,7 +19,7 @@ params:
   year: 2024 
   curriculum: "M1 MIDS"
   university: "Université Paris Cité"
-  homepage: "https://stephane-v-boucheron.fr/courses/isidata"
+  homepage: "https://s-v-b.github.io/MA7BY020"
 ---
 
 

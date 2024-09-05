@@ -25,16 +25,14 @@ format:
     code-annotations: hover
     code-fold: false
   pdf:
-    include-in-header:
-      - text: "\\lhead{{\\sf  EDA \\\\ R Introduction}}"
     output-file: lab-r-intro.pdf
 prefer-html: true
 params:
   truc: html
   year: 2024 
-  curriculum: "M1 ISIFAR"
+  curriculum: "M1 MIDS"
   university: "Université Paris Cité"
-  homepage: "https://stephane-v-boucheron.fr/courses/isidata"
+  homepage: "https://s-v-b.github.io/MA7BY020"
   moodle: "https://moodle.u-paris.fr/course/view.php?id=6143"
 engine: knitr
 ---
@@ -1715,7 +1713,7 @@ use `forcats::as_factor()` rather than base `R` `as.factor()`.
 
 ::: {.callout-tip}
 
-{{< fa hand-poin-right >}} Useful function to make nice `barplots` when constructing `barplots`. 
+{{< fa hand-point-right >}} Useful function to make nice `barplots` when constructing `barplots`. 
 
 Recall  that when you want to display counts for a univariate _categorical_ sample, you use a `barplot`.  It is often
 desirable to rank the levels according to the displayed statistics (usually a count).
