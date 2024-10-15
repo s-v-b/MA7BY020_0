@@ -57,6 +57,10 @@ old_options <- options(digits = 3,
 theme_set(theme_minimal())
 ```
 
+
+{{< include _preamble.qmd >}}
+
+
 ::: {.callout-important}
 
 ### Objectives

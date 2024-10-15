@@ -1,4 +1,6 @@
 ---
+title: "Concentration des distributions de prénoms"
+categories: [babynames. inequality, Lorenz curve, Schur convexity]
 date: "`r Sys.time()`"
 
 execute:
@@ -11,11 +13,7 @@ format:
     output-file: hmw-miashs-23-24-a.html
   pdf:
     output-file: hmw-miashs-23-24-a.pdf
-  typst: 
-    output-file: hmw-miashs-23-24-a.pdf
-    columns: 1
-    toc: true
-    papersize: a4
+
 
 params:
   truc: html
@@ -23,7 +21,7 @@ params:
   curriculum: "L3 MIASHS"
   university: "Université Paris Cité"
   homepage: "https://stephane-v-boucheron.fr/courses/scidon"
-  moodle: "https://moodle.u-paris.fr/course/view.php?id=13227"
+  moodle: "https://moodle.u-paris.fr/course/view.php?id=6143"
   
 engine: knitr
 ---
@@ -33,10 +31,13 @@ engine: knitr
 #| include: false
 #| message: false
 #| warning: false
-require(here)
-require(patchwork)
-require(glue)
-require(tidyverse)
+
+stopifnot(
+  require(here),
+  require(patchwork),
+  require(glue),
+  require(tidyverse)
+)
 
 old_theme <- theme_set(theme_minimal())
 ```
@@ -215,5 +216,5 @@ classification de ces prénoms en fonction de l'évolution de leur popularité a
 |Graphiques  | `r scales::label_percent()(5/20)` | Choix des  `aesthetics`, `geom`, `scale` ... {{<  fa chart-area >}}|
 |Style des Graphiques  | `r scales::label_percent()(3/20)` | Titres, légendes, étiquettes ... {{<  fa chart-area >}} |
 |Manipulations de tables | `r scales::label_percent()(5/20)` | {{<  fa database >}} |
-|Respect DRY  | `r scales::label_percent()(3/20)` | Principe DRY  {{<  fab wikipedia-w  >}} [ Wikipedia ](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself)|
+|Respect DRY  | `r scales::label_percent()(3/20)` | Principe DRY  {{<  fa brands wikipedia-w  >}} [ Wikipedia ](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself)|
 

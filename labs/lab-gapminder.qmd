@@ -16,10 +16,9 @@ execute:
   echo: true
   collapse: true
   
-  
 params:
   truc: html
-  year: 2024 
+  year: 2024
   curriculum: "M1 MIDS & MFA"
   university: "Université Paris Cité"
   homepage: "https://s-v-b.github.io/MA7BY020"
@@ -27,27 +26,7 @@ params:
 ---
 
 
-
-
-::: {layout="[80,20]"}
-
-::: {#first-column}
-
-
-- **`r stringr::str_glue('{params$curriculum}')`**
-- **`r stringr::str_glue('[{params$university}](https://www.u-paris.fr)')`**
-- `r stringr::str_glue("Année {params$year}-{params$year+1}")`
-- `r stringr::str_glue("[Course Homepage]({params$homepage})")`  
-- `r stringr::str_glue("[Moodle]({params$moodle})")`
-
-::: 
-
-::: {#second-column}
-![](/images/UniversiteParis_monogramme_couleur_RVB.png){align="right" style="size:50px;" width=75}
-:::
-
-:::
-
+{{< include _preamble.qmd >}}
 
 
 ::: {.callout-important}

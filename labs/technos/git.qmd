@@ -1,0 +1,22 @@
+
+
+[Happy Git](https://happygitwithr.com)
+
+Continuous Integration
+
+Package development
+
+Python integration
+
+Quarto
+
+Cloud computing 
+
+Cluster computing 
+
+Docker 
+
+Kubernetes
+
+renv virtual_env
+
