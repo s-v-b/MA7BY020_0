@@ -48,7 +48,7 @@ stopifnot(
   require(ggforce),
   require(glue),
   require(ggfortify),
-  require(ggvoronoi),
+  # require(ggvoronoi),
   require(magrittr),
   require(broom),
   require(ggdendro),

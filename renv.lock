@@ -944,18 +944,6 @@
       ],
       "Hash": "39b2e002522bfd258039ee4e889e0fd1"
     },
-    "deldir": {
-      "Package": "deldir",
-      "Version": "2.0-4",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "grDevices",
-        "graphics"
-      ],
-      "Hash": "24754fce82729ff85317dd195b6646a8"
-    },
     "dendextend": {
       "Package": "dendextend",
       "Version": "1.18.1",
@@ -1694,26 +1682,6 @@
         "tibble"
       ],
       "Hash": "16a4974681fc751a09a1250431361896"
-    },
-    "ggvoronoi": {
-      "Package": "ggvoronoi",
-      "Version": "0.8.6",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "ggvoronoi",
-      "RemoteUsername": "garretrc",
-      "RemoteSha": "6d98c7b25c6c032b344a6b73394620a2419d03d1",
-      "Requirements": [
-        "R",
-        "deldir",
-        "ggplot2",
-        "methods",
-        "raster",
-        "sp",
-        "terra"
-      ],
-      "Hash": "9dd72d13327470887e4ec2f26b236195"
     },
     "gh": {
       "Package": "gh",
@@ -3233,20 +3201,6 @@
       ],
       "Hash": "5e3c5dc0b071b21fa128676560dbe94d"
     },
-    "raster": {
-      "Package": "raster",
-      "Version": "3.6-30",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "Rcpp",
-        "methods",
-        "sp",
-        "terra"
-      ],
-      "Hash": "0e2829df8cb74a98179c886b023ffea8"
-    },
     "rcmdcheck": {
       "Package": "rcmdcheck",
       "Version": "1.4.0",
@@ -3878,23 +3832,6 @@
       ],
       "Hash": "5f5a7629f956619d519205ec475fe647"
     },
-    "sp": {
-      "Package": "sp",
-      "Version": "2.1-4",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "grDevices",
-        "graphics",
-        "grid",
-        "lattice",
-        "methods",
-        "stats",
-        "utils"
-      ],
-      "Hash": "75940133cca2e339afce15a586f85b11"
-    },
     "sqldf": {
       "Package": "sqldf",
       "Version": "0.4-11",
@@ -3986,18 +3923,6 @@
         "lifecycle"
       ],
       "Hash": "213b6b8ed5afbf934843e6c3b090d418"
-    },
-    "terra": {
-      "Package": "terra",
-      "Version": "1.7-83",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "Rcpp",
-        "methods"
-      ],
-      "Hash": "fbeffe988419d292225a57cf9c284802"
     },
     "testthat": {
       "Package": "testthat",

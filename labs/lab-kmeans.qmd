@@ -51,7 +51,7 @@ stopifnot(
   require(ggforce),
   require(glue),
   require(ggfortify),
-  require(ggvoronoi),
+## require(ggvoronoi),
   require(magrittr),
   require(broom),
   require(tidyverse)
@@ -106,7 +106,8 @@ Voronoi tesselation/partition/diagram
 In the next chunk, we generate a Voronoï diagram on $\mathbb{R}^2$ with $100$ cells defined from $100$ random points drawn from the uniform distribution on a square. 
 Function `stat_voronoi()` comes from [ggvoronoi](https://github.com/garretrc/ggvoronoi) 
 
-```{r voronoi}
+```{.r}
+#| label: voronoi
 #| echo: true
 set.seed(45056)
 x <- sample(1:200,100)
@@ -237,7 +238,7 @@ Compare the result with `plot()`
 ::::: {.content-visible when-profile="solution"}  
 
 
-```{r}
+```{.r}
 q <- kms %>% 
   augment(iris) %>%
   ggplot() +
@@ -269,7 +270,7 @@ q / qq +
 
 
 
-```{r}
+```{.r}
 geom_sugar <- list(
     stat_voronoi(data = df_centers,
                  geom="path",
@@ -294,7 +295,7 @@ geom_sugar <- list(
 
 
 
-```{r}
+```{.r}
 broom::augment(kms, iris) %>%
   ggplot(aes(x=Petal.Length, y=Petal.Width)) +
   geom_point(aes(shape=Species, color=.cluster)) +
@@ -317,7 +318,9 @@ Design a function to avoid repetitive coding.
 
 
 
-```{r iriskmeans3}
+```{.r}
+#| label: iriskmeans3
+#| 
 kms <- kmeans(select(iris, Sepal.Length, Sepal.Width), 3)
 
 broom::augment(kms, iris) %>%
@@ -368,7 +371,8 @@ df_centers2 <- tidy(kms)
 df_centers2
 ```
 
-```{r iriskmeans2bis}
+```{.r}
+#| label: iriskmeans2bis
 augment(kms, iris) %>%
  ggplot() +
  aes(x=Sepal.Length, y=Sepal.Width) +
@@ -429,7 +433,7 @@ tmp %>%
   scale_x_discrete(breaks=as.character(2:10), labels=as.character(2:10))
 ```
 
-```{r iriskmeans4}
+```{.r iriskmeans4}
 kms <- kmeans(df, 4)
 iris4 <- broom::augment(kms, iris)
 
@@ -500,7 +504,7 @@ for (i in 1:20) {
 }
 ```
 
-```{r}
+```{.r}
 add_voronoi <- function(p, kmscenters, marker){
   p +
     geom_point(data=data.frame(kmscenters),         #<<
@@ -517,7 +521,7 @@ add_voronoi <- function(p, kmscenters, marker){
 ```
 
 
-```{r lloyd1}
+```{.r lloyd1}
 i <- 2
 
 p <- broom::augment(sequence[[i]], iris) %>%
@@ -532,7 +536,7 @@ p %>%
 ```
 
 
-```{r lloyd5}
+```{.r lloyd5}
 i <- 3
 
 (p %+%
@@ -545,7 +549,7 @@ i <- 3
 ```
 
 
-```{r lloyd00}
+```{.r lloyd00}
 i <- 5
 
 (p %+%

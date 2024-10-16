@@ -38,7 +38,7 @@ stopifnot(
   require(GGally),
   require(ggforce),
   require(ggfortify),
-  require(ggvoronoi),
+#  require(ggvoronoi),
   require(glue),
   require(httr),
   require(magrittr),
@@ -116,7 +116,7 @@ swiss %>%
 ```
 
 Have a look at the documentation of the dataset
-```{r}
+```{.r}
 #| include: false
 ?swiss
 ```
@@ -936,7 +936,7 @@ df_centers.2.pca <- make_df_centers(km.2.pca)
 ::: {.content-visible when-profile="solution"} 
 ::: {.callout-tip title="solution"} 
 
-```{r}
+```{.r}
 #| eval: false
 broom::augment(km.2, scale(swiss)) %>%
   ggplot() +
@@ -986,7 +986,7 @@ df_centers.2 <-  make_df_centers(km.2)
 ::: {.content-hidden}
 ::: {.content-visible when-profile="solution"} 
 ::: {.callout-tip title="solution"} 
-```{r}
+```{.r}
 #| eval: false
 #| 
 broom::augment(km.2, whiteside) %>%
