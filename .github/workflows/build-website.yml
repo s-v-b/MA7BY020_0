@@ -41,11 +41,6 @@ jobs:
 
       - name: Set up tinytex
         uses: r-lib/actions/setup-tinytex@v2
-
-      - name: Add exams 
-        run: |
-          tlmgr update --self
-          tlmgr install exams
       
       - name: Build site 🔧
         run: |
